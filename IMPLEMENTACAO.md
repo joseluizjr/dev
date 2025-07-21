@@ -221,3 +221,41 @@ function regenerateChartsWithFilter() {
 - ✅ **Volatilidade**: Voltou a funcionar como antes  
 - ✅ **Tabelas**: Voltaram a funcionar como antes
 - ✅ **Performance**: Sem validações desnecessárias
+
+## 🔧 Correção Final do Período - Botão Simular
+
+### Problema Persistente
+Mesmo após as correções anteriores, o botão "Simular" ainda estava alterando o filtro para 36 meses em vez de manter o período atual selecionado.
+
+### Causa Encontrada
+O problema estava na função `createPeriodButtons()` que sempre selecionava o **último** período disponível como fallback:
+
+```javascript
+// ❌ Problema: Sempre selecionava o último (prof36m)
+const lastButton = enabledButtons[enabledButtons.length - 1];
+lastButton.classList.add("active");
+```
+
+### Solução Aplicada
+
+1. **Fallback para Primeiro Período:**
+```javascript
+// ✅ Agora seleciona o primeiro período disponível
+const firstButton = enabledButtons[0];
+firstButton.classList.add("active");
+```
+
+2. **Sincronização de Variáveis:**
+```javascript
+// ✅ Garante que ambas variáveis sejam atualizadas
+function activatePeriodButton(periodValue) {
+  filterPeriod = periodValue;
+  fixedPeriod = periodValue; // ✅ Adicionada linha que faltava
+}
+```
+
+### Resultado Final
+- ✅ **Período preservado**: Botão "Simular" mantém período atual
+- ✅ **Fallback inteligente**: Se necessário, usa primeiro período disponível (não 36M)
+- ✅ **Variáveis sincronizadas**: `filterPeriod` e `fixedPeriod` sempre consistentes
+- ✅ **Comportamento previsível**: Interface responde como esperado pelo usuário

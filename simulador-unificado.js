@@ -873,6 +873,7 @@ function activatePeriodButton(periodValue) {
   if (targetButton) {
     targetButton.classList.add("active");
     filterPeriod = periodValue;
+    fixedPeriod = periodValue;
     // console.log(`Período ${periodValue} ativado`);
   } else {
     // console.warn(`Botão com data-value="${periodValue}" não encontrado`);
@@ -955,14 +956,14 @@ const createPeriodButtons = () => {
     });
   });
 
-  // Se nenhum período foi definido como ativo, ativa o último disponível
+  // Se nenhum período foi definido como ativo, ativa o primeiro disponível
   if (!activePeriodSet) {
     const enabledButtons = document.querySelectorAll('.filter-period-button:not(.disabled)');
     if (enabledButtons.length > 0) {
-      const lastButton = enabledButtons[enabledButtons.length - 1];
-      lastButton.classList.add("active");
-      fixedPeriod = lastButton.getAttribute("data-value");
-      filterPeriod = lastButton.getAttribute("data-value");
+      const firstButton = enabledButtons[0];
+      firstButton.classList.add("active");
+      fixedPeriod = firstButton.getAttribute("data-value");
+      filterPeriod = firstButton.getAttribute("data-value");
     }
   }
 };
