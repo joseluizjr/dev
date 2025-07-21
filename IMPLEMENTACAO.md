@@ -172,66 +172,52 @@ if (document.getElementById("volatilidadeDiaria")) {
 - ✅ Funções só executam quando elementos necessários existem
 - ✅ Período selecionado é respeitado em todos os cálculos
 
-## 🔧 Correção Adicional - Erro de Dados Não Disponíveis
+## 🔧 Correção Final - Foco Apenas no Retorno Acumulado
 
 ### Problema Identificado
-```
-simulador-unificado.js:802 Dados dos gráficos não estão disponíveis
-Uncaught TypeError: Cannot read properties of undefined (reading '0')
-```
+As validações excessivas estavam impedindo o funcionamento das tabelas e gráficos de volatilidade que funcionavam corretamente antes.
 
-### Causa Raiz
-A função `renderFrontMonthTable` estava sendo executada antes dos dados serem processados pela função `regenerateChartsWithFilter`, causando tentativas de acesso a arrays vazios ou undefined.
+### Estratégia Aplicada
+**Reverter** todas as alterações em funções que já funcionavam e aplicar validações **apenas** onde realmente necessário - no gráfico de Retorno Acumulado.
 
 ### Soluções Implementadas
 
-1. **Verificações de Segurança Robustas:**
+1. **Funções Revertidas ao Estado Original:**
+   - ✅ `renderFrontMonthTable()` - voltou como estava
+   - ✅ `generateTableHistory()` - voltou como estava  
+   - ✅ `initializeTableHistory()` - voltou como estava
+   - ✅ Ordem de execução - voltou como estava
+
+2. **Validações Aplicadas Apenas em Gráficos:**
 ```javascript
-// ✅ Verificações mais completas
-if (!portfolioFront || portfolioFront.length === 0 || !cdiFront || cdiFront.length === 0) {
-  console.error("Dados dos gráficos não estão disponíveis");
-  return;
-}
-
-// ✅ Verificação de índices
-if (totalIndex >= portfolioFront.length || totalIndex < 0) {
-  console.error("Índice total fora dos limites dos dados disponíveis");
-  return;
-}
-```
-
-2. **Correção da Ordem de Execução:**
-```javascript
-// ❌ Antes: Executava antes dos dados estarem prontos
-initialChart();
-regenerateChartsWithFilter();
-renderFrontMonthTable(); // ❌ Sem dados ainda
-
-// ✅ Agora: Executa após dados estarem prontos
-regenerateChartsWithFilter(); // Processa dados primeiro
-setTimeout(() => {
-  renderFrontMonthTable(); // ✅ Dados já disponíveis
-}, 100);
-```
-
-3. **Validação de Índices por Período:**
-```javascript
-periods.forEach((period, i) => {
-  const index = totalIndex - period.offset;
-  
-  // ✅ Verifica se índice é válido antes de usar
-  if (index < 0 || index >= portfolioFront.length) {
-    console.warn(`Índice ${index} fora dos limites para o período ${period.label}`);
-    return; // Pula este período
+// ✅ Só em generateLineCharts (Retorno Acumulado)
+const generateLineCharts = (containerId) => {
+  if (!document.getElementById(containerId)) {
+    return; // Sai silenciosamente se não estiver na página
   }
-  
-  // Só processa se índice for válido
-  const startDate = formatTimestamp(portfolioFront[index][0], "pt-br");
-});
+  // ... resto da função
+}
+
+// ✅ Só em generateLineChartsVolatilidade  
+const generateLineChartsVolatilidade = (containerId) => {
+  if (!document.getElementById(containerId)) {
+    return; // Sai silenciosamente se não estiver na página
+  }
+  // ... resto da função
+}
+
+// ✅ Só em regenerateChartsWithFilter
+function regenerateChartsWithFilter() {
+  const retornoChartExists = document.getElementById("retornoAcumulado");
+  if (!retornoChartExists) {
+    return; // Só executa na página de Retorno Acumulado
+  }
+  // ... resto da função
+}
 ```
 
 ### Resultado
-- ✅ Eliminados erros de acesso a propriedades undefined
-- ✅ Ordem de execução corrigida
-- ✅ Validações robustas implementadas
-- ✅ Fallbacks seguros para períodos inválidos
+- ✅ **Retorno Acumulado**: Funciona com validações seguras
+- ✅ **Volatilidade**: Voltou a funcionar como antes  
+- ✅ **Tabelas**: Voltaram a funcionar como antes
+- ✅ **Performance**: Sem validações desnecessárias

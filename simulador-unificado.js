@@ -341,6 +341,12 @@ const generateLineCharts = (containerId) => {
     return;
   }
 
+  // Verifica se o elemento do gráfico existe
+  if (!document.getElementById(containerId)) {
+    // console.log(`Elemento ${containerId} não encontrado - não estamos na página correta`);
+    return;
+  }
+
   Highcharts.stockChart(containerId, {
     chart: {
       backgroundColor: null,
@@ -431,6 +437,12 @@ const generateLineCharts = (containerId) => {
 const generateLineChartsVolatilidade = (containerId) => {
   if (!window.Highcharts) {
     console.error("Highcharts não está disponível");
+    return;
+  }
+
+  // Verifica se o elemento do gráfico existe
+  if (!document.getElementById(containerId)) {
+    // console.log(`Elemento ${containerId} não encontrado - não estamos na página de volatilidade`);
     return;
   }
 
@@ -698,13 +710,7 @@ const generateTableHistory = (data) => {
   // Verifica se o elemento tableContainer existe
   const tableContainer = document.getElementById("tableContainer");
   if (!tableContainer) {
-    // console.log("Elemento tableContainer não encontrado - não estamos na página de relatório");
-    return;
-  }
-
-  // Verifica se há dados suficientes para gerar a tabela
-  if (!portfolioFront || portfolioFront.length === 0) {
-    console.warn("Dados do portfolio não estão disponíveis para gerar a tabela");
+    console.error("Elemento tableContainer não encontrado");
     return;
   }
 
@@ -767,15 +773,6 @@ function renderFrontMonthTable() {
     return;
   }
 
-  // Verifica se estamos na página que tem os elementos necessários
-  const tableExists = document.getElementById("tableContainer");
-  const volatilityChartExists = document.getElementById("volatilidadeDiaria");
-  
-  if (!tableExists && !volatilityChartExists) {
-    // console.log("Não estamos na página de relatórios, pulando renderFrontMonthTable");
-    return;
-  }
-
   const { prof3m, prof6m, prof12m, prof24m, prof36m, profYTD } = window.BaseRetornosDiarios.profitabilitiesByPeriod;
 
   meuPortfolioDiario = [];
@@ -794,18 +791,10 @@ function renderFrontMonthTable() {
     { label: "YTD", offset: profYTD?.length - 1 || 0 },
   ];
 
-  // Usa o período atual selecionado em vez de forçar prof36m
-  const currentPeriodData = window.BaseRetornosDiarios.profitabilitiesByPeriod[filterPeriod] || prof36m;
-  const totalIndex = currentPeriodData?.length - 1 || 0;
+  const totalIndex = prof36m?.length - 1 || 0;
 
-  if (!portfolioFront || portfolioFront.length === 0 || !cdiFront || cdiFront.length === 0) {
+  if (portfolioFront.length === 0 || cdiFront.length === 0) {
     console.error("Dados dos gráficos não estão disponíveis");
-    return;
-  }
-
-  // Verifica se o totalIndex está dentro dos limites
-  if (totalIndex >= portfolioFront.length || totalIndex < 0) {
-    console.error("Índice total fora dos limites dos dados disponíveis");
     return;
   }
 
@@ -817,13 +806,6 @@ function renderFrontMonthTable() {
   periods.forEach((period, i) => {
     const linha = i + 1;
     const index = totalIndex - period.offset;
-    
-    // Verifica se o índice calculado está dentro dos limites
-    if (index < 0 || index >= portfolioFront.length) {
-      console.warn(`Índice ${index} fora dos limites para o período ${period.label}`);
-      return; // Pula este período
-    }
-    
     const startDate = formatTimestamp(portfolioFront[index][0], "pt-br");
     const portfolioStartValue = portfolioFront[index][1];
     const cdiStartValue = cdiFront[index][1];
@@ -875,11 +857,7 @@ function renderFrontMonthTable() {
   volatilidadeArray = calculaVolatilidadeRolling('volatilidadeArray', meuPortfolioDiario);
   imabVolatilidadeArray = calculaVolatilidadeRolling('imabVolatilidadeArray', meuPortfolioDiarioImab);
   ibovVolatilidadeArray = calculaVolatilidadeRolling('ibovVolatilidadeArray', meuPortfolioDiarioIbov);
-  
-  // Só gera o gráfico de volatilidade se o elemento existir
-  if (document.getElementById("volatilidadeDiaria")) {
-    generateLineChartsVolatilidade("volatilidadeDiaria");
-  }
+  generateLineChartsVolatilidade("volatilidadeDiaria");
 }
 
 // ==========================================
@@ -1019,6 +997,13 @@ function regenerateChartsWithFilter() {
     return;
   }
 
+  // Verifica se estamos na página de Retorno Acumulado
+  const retornoChartExists = document.getElementById("retornoAcumulado");
+  if (!retornoChartExists) {
+    // console.log("Não estamos na página de Retorno Acumulado");
+    return;
+  }
+
   // Limpa os arrays dos gráficos
   portfolioFront = [];
   cdiFront = [];
@@ -1077,11 +1062,6 @@ function regenerateChartsWithFilter() {
 
   // Regenera apenas o gráfico de linha
   generateLineCharts("retornoAcumulado");
-  
-  // Chama renderFrontMonthTable após os dados estarem prontos
-  setTimeout(() => {
-    renderFrontMonthTable();
-  }, 100);
 }
 
 // Adicione esta função para inicializar a tabela no carregamento da página
@@ -1092,8 +1072,9 @@ function initializeTableHistory() {
     tableContainer.innerHTML = tableHTMLVolatility;
     // console.log("Tabela inicial criada");
   } else {
-    // console.warn("Elemento #tableContainer não encontrado - pode não estar na página atual");
-    // Não é um erro, simplesmente não estamos na página que tem tabela
+    console.warn(
+      "Elemento #tableContainer não encontrado no DOM durante a inicialização"
+    );
   }
 }
 
@@ -1374,7 +1355,7 @@ function initializeSimulator() {
         initialChart();
         createPeriodButtons();
         regenerateChartsWithFilter();
-        // renderFrontMonthTable será chamada após regenerateChartsWithFilter processar os dados
+        renderFrontMonthTable();
         
         // Atualiza estado dos botões de período após limpar
         setTimeout(() => {
@@ -1592,7 +1573,7 @@ function initializeSimulator() {
       initialChart();
       regenerateChartsWithFilter();
       createPeriodButtons();
-      // renderFrontMonthTable será chamada após regenerateChartsWithFilter processar os dados
+      renderFrontMonthTable();
       
       // Atualiza estado dos botões de período após inicialização
       setTimeout(() => {
