@@ -155,6 +155,12 @@ function updatePeriodButtonsState() {
     // Regenera os gráficos com o novo período
     regenerateChartsWithFilter();
   }
+  
+  // Regenera a tabela com os períodos atualizados
+  const tableContainer = document.getElementById("tableContainer");
+  if (tableContainer) {
+    generateTableHistory();
+  }
 }
 
 // ==========================================
@@ -536,174 +542,180 @@ const generateLineChartsVolatilidade = (containerId) => {
 // FUNÇÕES DE GERAÇÃO DE TABELAS
 // ==========================================
 
-// Dados da tabela
-const tableHTMLVolatility = `
-      <div class="table-container" style="width: 100%; display: inline-block;">
-        <!-- Tabela de valores -->
-          <div class="table-box d-none">
-            <table>
-              <thead>
-                <tr>
-                  <th colspan="5">Volatilidade</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="section-title">
-                  <td colspan="5">Portfólio</td>
-                </tr>
-                <tr class="portfolio">
-                  <td class="linha-1 endDate">-</td>
-                  <td class="linha-1 startDate">-</td>
-                  <td class="linha-1 end-value">-</td>
-                  <td class="linha-1 start-value">-</td>
-                </tr>
-                <tr class="portfolio">
-                  <td class="linha-2 endDate">-</td>
-                  <td class="linha-2 startDate">-</td>
-                  <td class="linha-2 end-value">-</td>
-                  <td class="linha-2 start-value">-</td>
-                </tr>
-                <tr class="portfolio">
-                  <td class="linha-3 endDate">-</td>
-                  <td class="linha-3 startDate">-</td>
-                  <td class="linha-3 end-value">-</td>
-                  <td class="linha-3 start-value">-</td>
-                </tr>
-                <tr class="portfolio">
-                  <td class="linha-4 endDate">-</td>
-                  <td class="linha-4 startDate">-</td>
-                  <td class="linha-4 end-value">-</td>
-                  <td class="linha-4 start-value">-</td>
-                </tr>
-                <tr class="portfolio d-none">
-                  <td class="linha-5 endDate">-</td>
-                  <td class="linha-5 startDate">-</td>
-                  <td class="linha-5 end-value">-</td>
-                  <td class="linha-5 start-value">-</td>
-                </tr>
-                <tr class="section-title">
-                  <td colspan="4">CDI</td>
-                </tr>
-                <tr class="cdi">
-                  <td class="linha-1 endDate">-</td>
-                  <td class="linha-1 startDate">-</td>
-                  <td class="linha-1 end-value">-</td>
-                  <td class="linha-1 start-value">-</td>
-                </tr>
-                <tr class="cdi">
-                  <td class="linha-2 endDate">-</td>
-                  <td class="linha-2 startDate">-</td>
-                  <td class="linha-2 end-value">-</td>
-                  <td class="linha-2 start-value">-</td>
-                </tr>
-                <tr class="cdi">
-                  <td class="linha-3 endDate">-</td>
-                  <td class="linha-3 startDate">-</td>
-                  <td class="linha-3 end-value">-</td>
-                  <td class="linha-3 start-value">-</td>
-                </tr>
-                <tr class="cdi">
-                  <td class="linha-4 endDate">-</td>
-                  <td class="linha-4 startDate">-</td>
-                  <td class="linha-4 end-value">-</td>
-                  <td class="linha-4 start-value">-</td>
-                </tr>
-                <tr class="cdi d-none">
-                  <td class="linha-5 endDate">-</td>
-                  <td class="linha-5 startDate">-</td>
-                  <td class="linha-5 end-value">-</td>
-                  <td class="linha-5 start-value">-</td>
-                </tr>
-                <tr class="section-title">
-                  <td colspan="4">IBOV</td>
-                </tr>
-                <tr class="ibov">
-                  <td class="linha-1 endDate">-</td>
-                  <td class="linha-1 startDate">-</td>
-                  <td class="linha-1 end-value">-</td>
-                  <td class="linha-1 start-value">-</td>
-                </tr>
-                <tr class="ibov">
-                  <td class="linha-2 endDate">-</td>
-                  <td class="linha-2 startDate">-</td>
-                  <td class="linha-2 end-value">-</td>
-                  <td class="linha-2 start-value">-</td>
-                </tr>
-                <tr class="ibov">
-                  <td class="linha-3 endDate">-</td>
-                  <td class="linha-3 startDate">-</td>
-                  <td class="linha-3 end-value">-</td>
-                  <td class="linha-3 start-value">-</td>
-                </tr>
-                <tr class="ibov">
-                  <td class="linha-4 endDate">-</td>
-                  <td class="linha-4 startDate">-</td>
-                  <td class="linha-4 end-value">-</td>
-                  <td class="linha-4 start-value">-</td>
-                </tr>
-                <tr class="ibov d-none">
-                  <td class="linha-5 endDate">-</td>
-                  <td class="linha-5 startDate">-</td>
-                  <td class="linha-5 end-value">-</td>
-                  <td class="linha-5 start-value">-</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+// Função para gerar tabela dinâmica baseada nos períodos disponíveis
+function generateDynamicTableHTML() {
+  // Pega apenas os períodos que estão habilitados no gráfico
+  const enabledPeriods = [];
+  const periodButtons = document.querySelectorAll('.filter-period-button:not(.disabled)');
+  
+  periodButtons.forEach(button => {
+    const periodValue = button.getAttribute('data-value');
+    const periodName = button.textContent;
+    
+    // Mapeia os valores para labels usados na tabela
+    let label = '';
+    if (periodValue === 'prof3m') label = '3m';
+    else if (periodValue === 'prof6m') label = '6m';
+    else if (periodValue === 'prof12m') label = '12m';
+    else if (periodValue === 'prof24m') label = '24m';
+    else if (periodValue === 'prof36m') label = '36m';
+    else if (periodValue === 'profYTD') label = 'YTD';
+    
+    if (label) {
+      enabledPeriods.push({
+        value: periodValue,
+        name: periodName,
+        label: label
+      });
+    }
+  });
 
-          <!-- Tabela de percentuais -->
-          <div class="table-box">
-            <table class="percentage-table">
-              <thead>
-                <tr>
-                  <th>Período</th>
-                  <th>Portfólio</th>
-                  <th>CDI</th>
-                  <th>IBOV</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="linha-3m">
-                  <td>3M</td>
-                  <td class="item-1">-</td>
-                  <td class="item-2">-</td>
-                  <td class="item-3">-</td>
-                </tr>
-                <tr class="linha-6m">
-                  <td>6M</td>
-                  <td class="item-1">-</td>
-                  <td class="item-2">-</td>
-                  <td class="item-3">-</td>
-                </tr>
-                <tr class="linha-12m">
-                  <td>12M</td>
-                  <td class="item-1">-</td>
-                  <td class="item-2">-</td>
-                  <td class="item-3">-</td>
-                </tr>
-                <tr class="linha-24m">
-                  <td>24M</td>
-                  <td class="item-1">-</td>
-                  <td class="item-2">-</td>
-                  <td class="item-3">-</td>
-                </tr>
-                <tr class="linha-36m">
-                  <td>36M</td>
-                  <td class="item-1">-</td>
-                  <td class="item-2">-</td>
-                  <td class="item-3">-</td>
-                </tr>
-                <tr class="linha-YTD">
-                  <td>YTD</td>
-                  <td class="item-1">-</td>
-                  <td class="item-2">-</td>
-                  <td class="item-3">-</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
+  // Gera as linhas da tabela dinamicamente
+  let tableRows = '';
+  enabledPeriods.forEach(period => {
+    tableRows += `
+      <tr class="linha-${period.label}">
+        <td>${period.name}</td>
+        <td class="item-1">-</td>
+        <td class="item-2">-</td>
+        <td class="item-3">-</td>
+      </tr>
+    `;
+  });
+
+  return `
+    <div class="table-container" style="width: 100%; display: inline-block;">
+      <!-- Tabela de valores -->
+      <div class="table-box d-none">
+        <table>
+          <thead>
+            <tr>
+              <th colspan="5">Volatilidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="section-title">
+              <td colspan="5">Portfólio</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-1 endDate">-</td>
+              <td class="linha-1 startDate">-</td>
+              <td class="linha-1 end-value">-</td>
+              <td class="linha-1 start-value">-</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-2 endDate">-</td>
+              <td class="linha-2 startDate">-</td>
+              <td class="linha-2 end-value">-</td>
+              <td class="linha-2 start-value">-</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-3 endDate">-</td>
+              <td class="linha-3 startDate">-</td>
+              <td class="linha-3 end-value">-</td>
+              <td class="linha-3 start-value">-</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-4 endDate">-</td>
+              <td class="linha-4 startDate">-</td>
+              <td class="linha-4 end-value">-</td>
+              <td class="linha-4 start-value">-</td>
+            </tr>
+            <tr class="portfolio d-none">
+              <td class="linha-5 endDate">-</td>
+              <td class="linha-5 startDate">-</td>
+              <td class="linha-5 end-value">-</td>
+              <td class="linha-5 start-value">-</td>
+            </tr>
+            <tr class="section-title">
+              <td colspan="4">CDI</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-1 endDate">-</td>
+              <td class="linha-1 startDate">-</td>
+              <td class="linha-1 end-value">-</td>
+              <td class="linha-1 start-value">-</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-2 endDate">-</td>
+              <td class="linha-2 startDate">-</td>
+              <td class="linha-2 end-value">-</td>
+              <td class="linha-2 start-value">-</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-3 endDate">-</td>
+              <td class="linha-3 startDate">-</td>
+              <td class="linha-3 end-value">-</td>
+              <td class="linha-3 start-value">-</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-4 endDate">-</td>
+              <td class="linha-4 startDate">-</td>
+              <td class="linha-4 end-value">-</td>
+              <td class="linha-4 start-value">-</td>
+            </tr>
+            <tr class="cdi d-none">
+              <td class="linha-5 endDate">-</td>
+              <td class="linha-5 startDate">-</td>
+              <td class="linha-5 end-value">-</td>
+              <td class="linha-5 start-value">-</td>
+            </tr>
+            <tr class="section-title">
+              <td colspan="4">IBOV</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-1 endDate">-</td>
+              <td class="linha-1 startDate">-</td>
+              <td class="linha-1 end-value">-</td>
+              <td class="linha-1 start-value">-</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-2 endDate">-</td>
+              <td class="linha-2 startDate">-</td>
+              <td class="linha-2 end-value">-</td>
+              <td class="linha-2 start-value">-</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-3 endDate">-</td>
+              <td class="linha-3 startDate">-</td>
+              <td class="linha-3 end-value">-</td>
+              <td class="linha-3 start-value">-</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-4 endDate">-</td>
+              <td class="linha-4 startDate">-</td>
+              <td class="linha-4 end-value">-</td>
+              <td class="linha-4 start-value">-</td>
+            </tr>
+            <tr class="ibov d-none">
+              <td class="linha-5 endDate">-</td>
+              <td class="linha-5 startDate">-</td>
+              <td class="linha-5 end-value">-</td>
+              <td class="linha-5 start-value">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tabela de percentuais - DINÂMICA -->
+      <div class="table-box">
+        <table class="percentage-table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Portfólio</th>
+              <th>CDI</th>
+              <th>IBOV</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
 
 // Generate table
 const generateTableHistory = (data) => {
@@ -714,8 +726,8 @@ const generateTableHistory = (data) => {
     return;
   }
 
-  // Inserindo a tabela no DOM
-  tableContainer.innerHTML = tableHTMLVolatility;
+  // Gera e insere a tabela dinâmica baseada nos períodos ativos
+  tableContainer.innerHTML = generateDynamicTableHTML();
 };
 
 function renderFrontMonth() {
@@ -782,14 +794,39 @@ function renderFrontMonthTable() {
   imabVolatilidadeArray = [];
   ibovVolatilidadeArray = [];
 
-  const periods = [
-    { label: "3m", offset: prof3m?.length - 1 || 0 },
-    { label: "6m", offset: prof6m?.length - 1 || 0 },
-    { label: "12m", offset: prof12m?.length - 1 || 0 },
-    { label: "24m", offset: prof24m?.length - 1 || 0 },
-    { label: "36m", offset: prof36m?.length - 1 || 0 },
-    { label: "YTD", offset: profYTD?.length - 1 || 0 },
-  ];
+  // Pega apenas os períodos que estão habilitados no gráfico
+  const enabledPeriods = [];
+  const periodButtons = document.querySelectorAll('.filter-period-button:not(.disabled)');
+  
+  periodButtons.forEach(button => {
+    const periodValue = button.getAttribute('data-value');
+    let label = '';
+    let offset = 0;
+    
+    if (periodValue === 'prof3m') {
+      label = '3m';
+      offset = prof3m?.length - 1 || 0;
+    } else if (periodValue === 'prof6m') {
+      label = '6m';
+      offset = prof6m?.length - 1 || 0;
+    } else if (periodValue === 'prof12m') {
+      label = '12m';
+      offset = prof12m?.length - 1 || 0;
+    } else if (periodValue === 'prof24m') {
+      label = '24m';
+      offset = prof24m?.length - 1 || 0;
+    } else if (periodValue === 'prof36m') {
+      label = '36m';
+      offset = prof36m?.length - 1 || 0;
+    } else if (periodValue === 'profYTD') {
+      label = 'YTD';
+      offset = profYTD?.length - 1 || 0;
+    }
+    
+    if (label) {
+      enabledPeriods.push({ label, offset });
+    }
+  });
 
   const totalIndex = prof36m?.length - 1 || 0;
 
@@ -803,7 +840,8 @@ function renderFrontMonthTable() {
   const cdiEndValue = cdiFront[totalIndex][1];
   const ibovEndValue = ibovespaFront[totalIndex][1];
 
-  periods.forEach((period, i) => {
+  // Processa apenas os períodos habilitados
+  enabledPeriods.forEach((period, i) => {
     const linha = i + 1;
     const index = totalIndex - period.offset;
     const startDate = formatTimestamp(portfolioFront[index][0], "pt-br");
@@ -829,7 +867,7 @@ function renderFrontMonthTable() {
     updateCellText(`.ibov .linha-${linha}.end-value`, formatNumber(ibovEndValue));
     updateCellText(`.ibov .linha-${linha}.start-value`, formatNumber(ibovStartValue));
 
-    // Atualiza a tabela de percentuais
+    // Atualiza a tabela de percentuais usando apenas períodos habilitados
     const label = period.label;
     const portfolioPerf = ((portfolioEndValue / portfolioStartValue - 1) * 100).toFixed(2);
     const cdiPerf = ((cdiEndValue / cdiStartValue - 1) * 100).toFixed(2);
@@ -1069,8 +1107,8 @@ function regenerateChartsWithFilter() {
 function initializeTableHistory() {
   const tableContainer = document.getElementById("tableContainer");
   if (tableContainer) {
-    // Cria uma tabela vazia com a estrutura correta
-    tableContainer.innerHTML = tableHTMLVolatility;
+    // Cria uma tabela dinâmica baseada nos períodos disponíveis
+    tableContainer.innerHTML = generateDynamicTableHTML();
     // console.log("Tabela inicial criada");
   } else {
     console.warn(

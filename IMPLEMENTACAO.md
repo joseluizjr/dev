@@ -259,3 +259,78 @@ function activatePeriodButton(periodValue) {
 - ✅ **Fallback inteligente**: Se necessário, usa primeiro período disponível (não 36M)
 - ✅ **Variáveis sincronizadas**: `filterPeriod` e `fixedPeriod` sempre consistentes
 - ✅ **Comportamento previsível**: Interface responde como esperado pelo usuário
+
+## 🎯 Nova Funcionalidade - Tabela Dinâmica de Performance
+
+### Objetivo
+Fazer com que a tabela do "Relatório de Performance" mostre **apenas** os períodos que estão ativos/habilitados no gráfico, em vez de sempre mostrar todos os 6 períodos.
+
+### Implementação
+
+1. **Função Dinâmica de Geração:**
+```javascript
+// ✅ Nova função que gera tabela baseada nos períodos ativos
+function generateDynamicTableHTML() {
+  const enabledPeriods = [];
+  const periodButtons = document.querySelectorAll('.filter-period-button:not(.disabled)');
+  
+  periodButtons.forEach(button => {
+    const periodValue = button.getAttribute('data-value');
+    const periodName = button.textContent;
+    // Mapeia e adiciona apenas períodos habilitados
+  });
+  
+  // Gera HTML dinamicamente
+  return `<table>...</table>`;
+}
+```
+
+2. **Substituição da Tabela Estática:**
+```javascript
+// ❌ Antes: Tabela fixa com todos os períodos
+const tableHTMLVolatility = `<tr class="linha-3m">...</tr>
+                             <tr class="linha-6m">...</tr>
+                             <tr class="linha-12m">...</tr>
+                             <tr class="linha-24m">...</tr>
+                             <tr class="linha-36m">...</tr>
+                             <tr class="linha-YTD">...</tr>`;
+
+// ✅ Agora: Tabela dinâmica apenas com períodos habilitados
+function generateDynamicTableHTML() {
+  // Gera apenas linhas para períodos não desabilitados
+}
+```
+
+3. **Atualização Automática:**
+```javascript
+// ✅ Regenera tabela quando períodos mudam
+function updatePeriodButtonsState() {
+  // ... validação dos botões ...
+  
+  // Regenera a tabela com os períodos atualizados
+  const tableContainer = document.getElementById("tableContainer");
+  if (tableContainer) {
+    generateTableHistory(); // ✅ Usa nova função dinâmica
+  }
+}
+```
+
+### Comportamento
+
+#### Cenário 1: Fundo com apenas 3 meses de dados
+- **Períodos habilitados**: 3M, YTD
+- **Tabela mostra**: Apenas 2 linhas (3M e YTD)
+
+#### Cenário 2: Fundo com 2 anos de dados  
+- **Períodos habilitados**: 3M, 6M, 12M, 24M, YTD
+- **Tabela mostra**: 5 linhas (sem 36M)
+
+#### Cenário 3: Fundo completo
+- **Períodos habilitados**: Todos (3M, 6M, 12M, 24M, 36M, YTD)
+- **Tabela mostra**: 6 linhas (tabela completa)
+
+### Resultado
+- ✅ **Tabela limpa**: Só mostra períodos relevantes
+- ✅ **Consistência**: Tabela sempre alinhada com gráfico  
+- ✅ **UX melhorada**: Usuário não vê dados irrelevantes/indisponíveis
+- ✅ **Atualização automática**: Tabela se adapta conforme seleção de fundos
