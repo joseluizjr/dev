@@ -90,3 +90,33 @@ Se o período atual se torna indisponível, o sistema automaticamente:
 - Transições suaves entre estados
 
 Esta implementação garante que os cálculos sempre sejam precisos, evitando erros causados por dados insuficientes nos fundos selecionados.
+
+## ✅ Correção Aplicada - Manter Período Atual
+
+### Problema Identificado
+Ao clicar em "Simular", o sistema estava forçando a mudança para o período de 36 meses, ignorando o filtro atual selecionado pelo usuário.
+
+### Solução Implementada
+1. **Remoção do período fixo**: Alterado `fixedPeriod` e `filterPeriod` para `null` na inicialização
+2. **Preservação do período ativo**: O botão "Simular" agora mantém o período atualmente selecionado
+3. **Fallback inteligente**: Se não houver período ativo, busca o primeiro disponível baseado nos fundos selecionados
+4. **Remoção de forçamento**: Eliminada a ativação automática do botão de 36 meses após processar dados
+
+### Código Modificado
+```javascript
+// Antes:
+let fixedPeriod = "prof36m"; // ❌ Forçava 36 meses
+filterPeriod = "prof36m"; // ❌ Sempre resetava para 36m
+
+// Agora:
+let fixedPeriod = null; // ✅ Dinâmico
+const currentActivePeriod = document.querySelector('.filter-period-button.active:not(.disabled)');
+if (currentActivePeriod) {
+  filterPeriod = currentActivePeriod.getAttribute('data-value'); // ✅ Mantém atual
+}
+```
+
+### Resultado
+- ✅ Período selecionado é preservado ao simular
+- ✅ Interface mais intuitiva e previsível
+- ✅ Comportamento consistente com expectativa do usuário

@@ -40,8 +40,8 @@ const filterPeriodLength = 63;
 const RAIZ = Math.sqrt(diasUteis);
 
 // Períodos - declaração única
-let fixedPeriod = "prof36m"; // Período fixo para currentPortfolio
-let filterPeriod = fixedPeriod; // Período para os filtros
+let fixedPeriod = null; // Período será definido dinamicamente baseado na disponibilidade
+let filterPeriod = null; // Período para os filtros
 
 // Arrays de dados - declaração única
 let meuPortfolioDiario = [];
@@ -1359,11 +1359,26 @@ function initializeSimulator() {
 
         this.innerHTML = "Carregando...";
 
-        // Define o período como prof36m ao clicar em simular
-        // filterPeriod = "prof36m";
-        // fixedPeriod = "prof36m";
-        filterPeriod = filterPeriod || "prof36m";
-        fixedPeriod = filterPeriod || "prof36m";
+        // Mantém o período atual selecionado ao clicar em simular
+        // Não força mudança para prof36m, usa o período já selecionado
+        const currentActivePeriod = document.querySelector('.filter-period-button.active:not(.disabled)');
+        if (currentActivePeriod) {
+          filterPeriod = currentActivePeriod.getAttribute('data-value');
+          fixedPeriod = filterPeriod;
+                 } else {
+           // Fallback: busca primeiro período disponível baseado nos fundos selecionados
+           const availableButtons = document.querySelectorAll('.filter-period-button:not(.disabled)');
+           if (availableButtons.length > 0) {
+             const firstAvailable = availableButtons[0];
+             filterPeriod = firstAvailable.getAttribute('data-value');
+             fixedPeriod = filterPeriod;
+             firstAvailable.classList.add('active');
+           } else {
+             // Último fallback para YTD que geralmente está sempre disponível
+             filterPeriod = "profYTD";
+             fixedPeriod = filterPeriod;
+           }
+         }
 
         let currentPortfolio = [];
         portfolioFront = [];
@@ -1452,10 +1467,8 @@ function initializeSimulator() {
             portfolioFront.push([timestamp, relatorio.value]);
           });
 
-          // Ativa o botão de 36 meses após processar os dados
-          setTimeout(() => {
-            activatePeriodButton("prof36m");
-          }, 100);
+          // Mantém o período atual ativo após processar os dados
+          // Não força mudança para prof36m
 
           setTimeout(() => {
             if (document.querySelector("#tableContainer table")) {
