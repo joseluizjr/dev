@@ -410,17 +410,17 @@ const generateLineCharts = (containerId) => {
     series: [
       {
         name: "Meu Portfólio",
-        data: portfolioFront,
+        data: volatilidadeArray,
         color: window.colors?.[0] || "#ED7020",
       },
       {
         name: "IBOV",
-        data: ibovespaFront,
+        data: ibovVolatilidadeArray,
         color: window.colorsIndexes?.[1] || "#ADB6BB",
       },
       {
-        name: "CDI",
-        data: cdiFront,
+        name: "IMA-B",
+        data: imabVolatilidadeArray,
         color: window.colorsIndexes?.[2] || "#F4A766",
       },
     ],
@@ -698,7 +698,13 @@ const generateTableHistory = (data) => {
   // Verifica se o elemento tableContainer existe
   const tableContainer = document.getElementById("tableContainer");
   if (!tableContainer) {
-    console.error("Elemento tableContainer não encontrado");
+    // console.log("Elemento tableContainer não encontrado - não estamos na página de relatório");
+    return;
+  }
+
+  // Verifica se há dados suficientes para gerar a tabela
+  if (!portfolioFront || portfolioFront.length === 0) {
+    console.warn("Dados do portfolio não estão disponíveis para gerar a tabela");
     return;
   }
 
@@ -761,6 +767,15 @@ function renderFrontMonthTable() {
     return;
   }
 
+  // Verifica se estamos na página que tem os elementos necessários
+  const tableExists = document.getElementById("tableContainer");
+  const volatilityChartExists = document.getElementById("volatilidadeDiaria");
+  
+  if (!tableExists && !volatilityChartExists) {
+    // console.log("Não estamos na página de relatórios, pulando renderFrontMonthTable");
+    return;
+  }
+
   const { prof3m, prof6m, prof12m, prof24m, prof36m, profYTD } = window.BaseRetornosDiarios.profitabilitiesByPeriod;
 
   meuPortfolioDiario = [];
@@ -779,7 +794,9 @@ function renderFrontMonthTable() {
     { label: "YTD", offset: profYTD?.length - 1 || 0 },
   ];
 
-  const totalIndex = prof36m?.length - 1 || 0;
+  // Usa o período atual selecionado em vez de forçar prof36m
+  const currentPeriodData = window.BaseRetornosDiarios.profitabilitiesByPeriod[filterPeriod] || prof36m;
+  const totalIndex = currentPeriodData?.length - 1 || 0;
 
   if (portfolioFront.length === 0 || cdiFront.length === 0) {
     console.error("Dados dos gráficos não estão disponíveis");
@@ -845,7 +862,11 @@ function renderFrontMonthTable() {
   volatilidadeArray = calculaVolatilidadeRolling('volatilidadeArray', meuPortfolioDiario);
   imabVolatilidadeArray = calculaVolatilidadeRolling('imabVolatilidadeArray', meuPortfolioDiarioImab);
   ibovVolatilidadeArray = calculaVolatilidadeRolling('ibovVolatilidadeArray', meuPortfolioDiarioIbov);
-  generateLineChartsVolatilidade("volatilidadeDiaria");
+  
+  // Só gera o gráfico de volatilidade se o elemento existir
+  if (document.getElementById("volatilidadeDiaria")) {
+    generateLineChartsVolatilidade("volatilidadeDiaria");
+  }
 }
 
 // ==========================================
@@ -1053,9 +1074,8 @@ function initializeTableHistory() {
     tableContainer.innerHTML = tableHTMLVolatility;
     // console.log("Tabela inicial criada");
   } else {
-    console.warn(
-      "Elemento #tableContainer não encontrado no DOM durante a inicialização"
-    );
+    // console.warn("Elemento #tableContainer não encontrado - pode não estar na página atual");
+    // Não é um erro, simplesmente não estamos na página que tem tabela
   }
 }
 
