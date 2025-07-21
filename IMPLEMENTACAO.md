@@ -120,3 +120,54 @@ if (currentActivePeriod) {
 - ✅ Período selecionado é preservado ao simular
 - ✅ Interface mais intuitiva e previsível
 - ✅ Comportamento consistente com expectativa do usuário
+
+## 🔧 Correção Aplicada - Relatório de Performance e Volatilidade
+
+### Problema Identificado
+Os relatórios de Performance e Volatilidade pararam de funcionar após as modificações iniciais.
+
+### Problemas Encontrados e Soluções
+1. **Dados incorretos no gráfico de volatilidade**: 
+   - ❌ Problema: `generateLineChartsVolatilidade` estava usando `portfolioFront` em vez de `volatilidadeArray`
+   - ✅ Solução: Corrigido para usar os arrays corretos de volatilidade
+
+2. **Índice de dados fixo**:
+   - ❌ Problema: `totalIndex` sempre usava `prof36m` independente do período selecionado
+   - ✅ Solução: Agora usa o período atual (`filterPeriod`)
+
+3. **Execução desnecessária**:
+   - ❌ Problema: Funções tentavam executar mesmo quando elementos não existiam na página
+   - ✅ Solução: Adicionadas verificações condicionais
+
+### Código Corrigido
+```javascript
+// ❌ Antes: Dados errados
+series: [{
+  name: "Meu Portfólio",
+  data: portfolioFront, // Dados de performance em vez de volatilidade
+}]
+
+// ✅ Agora: Dados corretos
+series: [{
+  name: "Meu Portfólio", 
+  data: volatilidadeArray, // Dados corretos de volatilidade
+}]
+
+// ❌ Antes: Índice fixo
+const totalIndex = prof36m?.length - 1 || 0;
+
+// ✅ Agora: Índice dinâmico
+const currentPeriodData = window.BaseRetornosDiarios.profitabilitiesByPeriod[filterPeriod] || prof36m;
+const totalIndex = currentPeriodData?.length - 1 || 0;
+
+// ✅ Verificações condicionais adicionadas
+if (document.getElementById("volatilidadeDiaria")) {
+  generateLineChartsVolatilidade("volatilidadeDiaria");
+}
+```
+
+### Resultado
+- ✅ Gráfico de Volatilidade funciona corretamente
+- ✅ Tabela de Performance atualiza com dados corretos
+- ✅ Funções só executam quando elementos necessários existem
+- ✅ Período selecionado é respeitado em todos os cálculos
