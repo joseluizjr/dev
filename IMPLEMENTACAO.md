@@ -171,3 +171,67 @@ if (document.getElementById("volatilidadeDiaria")) {
 - ✅ Tabela de Performance atualiza com dados corretos
 - ✅ Funções só executam quando elementos necessários existem
 - ✅ Período selecionado é respeitado em todos os cálculos
+
+## 🔧 Correção Adicional - Erro de Dados Não Disponíveis
+
+### Problema Identificado
+```
+simulador-unificado.js:802 Dados dos gráficos não estão disponíveis
+Uncaught TypeError: Cannot read properties of undefined (reading '0')
+```
+
+### Causa Raiz
+A função `renderFrontMonthTable` estava sendo executada antes dos dados serem processados pela função `regenerateChartsWithFilter`, causando tentativas de acesso a arrays vazios ou undefined.
+
+### Soluções Implementadas
+
+1. **Verificações de Segurança Robustas:**
+```javascript
+// ✅ Verificações mais completas
+if (!portfolioFront || portfolioFront.length === 0 || !cdiFront || cdiFront.length === 0) {
+  console.error("Dados dos gráficos não estão disponíveis");
+  return;
+}
+
+// ✅ Verificação de índices
+if (totalIndex >= portfolioFront.length || totalIndex < 0) {
+  console.error("Índice total fora dos limites dos dados disponíveis");
+  return;
+}
+```
+
+2. **Correção da Ordem de Execução:**
+```javascript
+// ❌ Antes: Executava antes dos dados estarem prontos
+initialChart();
+regenerateChartsWithFilter();
+renderFrontMonthTable(); // ❌ Sem dados ainda
+
+// ✅ Agora: Executa após dados estarem prontos
+regenerateChartsWithFilter(); // Processa dados primeiro
+setTimeout(() => {
+  renderFrontMonthTable(); // ✅ Dados já disponíveis
+}, 100);
+```
+
+3. **Validação de Índices por Período:**
+```javascript
+periods.forEach((period, i) => {
+  const index = totalIndex - period.offset;
+  
+  // ✅ Verifica se índice é válido antes de usar
+  if (index < 0 || index >= portfolioFront.length) {
+    console.warn(`Índice ${index} fora dos limites para o período ${period.label}`);
+    return; // Pula este período
+  }
+  
+  // Só processa se índice for válido
+  const startDate = formatTimestamp(portfolioFront[index][0], "pt-br");
+});
+```
+
+### Resultado
+- ✅ Eliminados erros de acesso a propriedades undefined
+- ✅ Ordem de execução corrigida
+- ✅ Validações robustas implementadas
+- ✅ Fallbacks seguros para períodos inválidos

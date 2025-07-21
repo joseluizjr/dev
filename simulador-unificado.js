@@ -798,8 +798,14 @@ function renderFrontMonthTable() {
   const currentPeriodData = window.BaseRetornosDiarios.profitabilitiesByPeriod[filterPeriod] || prof36m;
   const totalIndex = currentPeriodData?.length - 1 || 0;
 
-  if (portfolioFront.length === 0 || cdiFront.length === 0) {
+  if (!portfolioFront || portfolioFront.length === 0 || !cdiFront || cdiFront.length === 0) {
     console.error("Dados dos gráficos não estão disponíveis");
+    return;
+  }
+
+  // Verifica se o totalIndex está dentro dos limites
+  if (totalIndex >= portfolioFront.length || totalIndex < 0) {
+    console.error("Índice total fora dos limites dos dados disponíveis");
     return;
   }
 
@@ -811,6 +817,13 @@ function renderFrontMonthTable() {
   periods.forEach((period, i) => {
     const linha = i + 1;
     const index = totalIndex - period.offset;
+    
+    // Verifica se o índice calculado está dentro dos limites
+    if (index < 0 || index >= portfolioFront.length) {
+      console.warn(`Índice ${index} fora dos limites para o período ${period.label}`);
+      return; // Pula este período
+    }
+    
     const startDate = formatTimestamp(portfolioFront[index][0], "pt-br");
     const portfolioStartValue = portfolioFront[index][1];
     const cdiStartValue = cdiFront[index][1];
@@ -1064,6 +1077,11 @@ function regenerateChartsWithFilter() {
 
   // Regenera apenas o gráfico de linha
   generateLineCharts("retornoAcumulado");
+  
+  // Chama renderFrontMonthTable após os dados estarem prontos
+  setTimeout(() => {
+    renderFrontMonthTable();
+  }, 100);
 }
 
 // Adicione esta função para inicializar a tabela no carregamento da página
@@ -1356,7 +1374,7 @@ function initializeSimulator() {
         initialChart();
         createPeriodButtons();
         regenerateChartsWithFilter();
-        renderFrontMonthTable();
+        // renderFrontMonthTable será chamada após regenerateChartsWithFilter processar os dados
         
         // Atualiza estado dos botões de período após limpar
         setTimeout(() => {
@@ -1574,7 +1592,7 @@ function initializeSimulator() {
       initialChart();
       regenerateChartsWithFilter();
       createPeriodButtons();
-      renderFrontMonthTable();
+      // renderFrontMonthTable será chamada após regenerateChartsWithFilter processar os dados
       
       // Atualiza estado dos botões de período após inicialização
       setTimeout(() => {
