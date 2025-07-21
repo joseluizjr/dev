@@ -31,6 +31,21 @@
     </div>
 </div>
 
+<style>
+.filter-period-button.disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+.filter-period-button:not(.disabled) {
+    transition: all 0.3s ease;
+}
+
+.filter-period-button:not(.disabled):hover {
+    opacity: 0.8;
+}
+</style>
 
 <script>
     // Definição de variáveis
@@ -60,6 +75,96 @@
     // Variável para controlar se os dados foram carregados
     let dataLoaded = false;
     let elementsCreated = false;
+    
+    // ==========================================
+    // FUNÇÕES DE VALIDAÇÃO DE PERÍODOS
+    // ==========================================
+    
+    // Função para calcular períodos disponíveis baseado na data de início
+    function calculateAvailablePeriods(startDateTimestamp) {
+        const now = new Date();
+        const startDate = new Date(startDateTimestamp);
+        const monthsDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+        
+        const availablePeriods = [];
+        
+        // Verifica cada período
+        if (monthsDiff >= 3) availablePeriods.push('prof3m');
+        if (monthsDiff >= 6) availablePeriods.push('prof6m');
+        if (monthsDiff >= 12) availablePeriods.push('prof12m');
+        if (monthsDiff >= 24) availablePeriods.push('prof24m');
+        if (monthsDiff >= 36) availablePeriods.push('prof36m');
+        
+        // YTD sempre disponível se iniciou no ano atual ou anteriores
+        if (startDate.getFullYear() <= now.getFullYear()) {
+            availablePeriods.push('profYTD');
+        }
+        
+        return availablePeriods;
+    }
+    
+    // Função para verificar se um período está disponível para fundos selecionados
+    function isPeriodAvailableForSelectedFunds(periodValue) {
+        const selectedFunds = [];
+        
+        // Coleta fundos com valor > 0
+        const rangeInputs = document.querySelectorAll('input[data-type="range-portfolio"]');
+        rangeInputs.forEach(input => {
+            if (parseFloat(input.value) > 0) {
+                const fundId = input.id.replace('fund-', '');
+                const fund = portfolio.find(f => f.id === fundId);
+                if (fund) {
+                    selectedFunds.push(fund);
+                }
+            }
+        });
+        
+        // Se nenhum fundo selecionado, permite todos os períodos
+        if (selectedFunds.length === 0) {
+            return true;
+        }
+        
+        // Verifica se todos os fundos selecionados suportam o período
+        return selectedFunds.every(fund => {
+            const availablePeriods = calculateAvailablePeriods(fund.startDate);
+            return availablePeriods.includes(periodValue);
+        });
+    }
+    
+    // Função para atualizar estado dos botões de período
+    function updatePeriodButtonsState() {
+        const periodButtons = document.querySelectorAll('.filter-period-button');
+        let hasEnabledButton = false;
+        let fallbackButton = null;
+        
+        periodButtons.forEach(button => {
+            const periodValue = button.getAttribute('data-value');
+            const isAvailable = isPeriodAvailableForSelectedFunds(periodValue);
+            
+            if (isAvailable) {
+                button.classList.remove('disabled');
+                button.disabled = false;
+                if (!hasEnabledButton) {
+                    fallbackButton = button;
+                    hasEnabledButton = true;
+                }
+            } else {
+                button.classList.add('disabled');
+                button.disabled = true;
+                // Se o botão desabilitado estava ativo, remove a classe active
+                if (button.classList.contains('active')) {
+                    button.classList.remove('active');
+                }
+            }
+        });
+        
+        // Se nenhum botão ativo está habilitado, ativa o primeiro disponível
+        const activeButton = document.querySelector('.filter-period-button.active:not(.disabled)');
+        if (!activeButton && fallbackButton) {
+            fallbackButton.classList.add('active');
+            filterPeriod = fallbackButton.getAttribute('data-value');
+        }
+    }
     
     // Função para carregar o script unificado
     function loadExternalScripts() {
@@ -244,6 +349,7 @@
                         data-rangeColor="${colors[index]}"
                         data-rangeSlider=".rangeSlider-${index + 1}"
                         data-type="range-portfolio"
+                        data-start-date="${item.startDate}"
                         type="range"
                         min="0"
                         max="100"

@@ -62,6 +62,102 @@ const Highcharts = window.Highcharts; // Assuming Highcharts is available global
 let simuladorInitialized = false;
 
 // ==========================================
+// FUNÇÕES DE VALIDAÇÃO DE PERÍODOS
+// ==========================================
+
+// Função para calcular períodos disponíveis baseado na data de início
+function calculateAvailablePeriods(startDateTimestamp) {
+  const now = new Date();
+  const startDate = new Date(startDateTimestamp);
+  const monthsDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+  
+  const availablePeriods = [];
+  
+  // Verifica cada período
+  if (monthsDiff >= 3) availablePeriods.push('prof3m');
+  if (monthsDiff >= 6) availablePeriods.push('prof6m');
+  if (monthsDiff >= 12) availablePeriods.push('prof12m');
+  if (monthsDiff >= 24) availablePeriods.push('prof24m');
+  if (monthsDiff >= 36) availablePeriods.push('prof36m');
+  
+  // YTD sempre disponível se iniciou no ano atual ou anteriores
+  if (startDate.getFullYear() <= now.getFullYear()) {
+    availablePeriods.push('profYTD');
+  }
+  
+  return availablePeriods;
+}
+
+// Função para verificar se um período está disponível para fundos selecionados
+function isPeriodAvailableForSelectedFunds(periodValue) {
+  const selectedFunds = [];
+  
+  // Coleta fundos com valor > 0
+  const rangeInputs = document.querySelectorAll('input[data-type="range-portfolio"]');
+  rangeInputs.forEach(input => {
+    if (parseFloat(input.value) > 0) {
+      const fundId = input.id.replace('fund-', '');
+      const fund = window.portfolio?.find(f => f.id === fundId);
+      if (fund) {
+        selectedFunds.push(fund);
+      }
+    }
+  });
+  
+  // Se nenhum fundo selecionado, permite todos os períodos
+  if (selectedFunds.length === 0) {
+    return true;
+  }
+  
+  // Verifica se todos os fundos selecionados suportam o período
+  return selectedFunds.every(fund => {
+    const availablePeriods = calculateAvailablePeriods(fund.startDate);
+    return availablePeriods.includes(periodValue);
+  });
+}
+
+// Função para atualizar estado dos botões de período
+function updatePeriodButtonsState() {
+  const periodButtons = document.querySelectorAll('.filter-period-button');
+  let hasEnabledButton = false;
+  let fallbackButton = null;
+  
+  periodButtons.forEach(button => {
+    const periodValue = button.getAttribute('data-value');
+    const isAvailable = isPeriodAvailableForSelectedFunds(periodValue);
+    
+    if (isAvailable) {
+      button.classList.remove('disabled');
+      button.disabled = false;
+      button.style.opacity = '1';
+      button.style.cursor = 'pointer';
+      if (!hasEnabledButton) {
+        fallbackButton = button;
+        hasEnabledButton = true;
+      }
+    } else {
+      button.classList.add('disabled');
+      button.disabled = true;
+      button.style.opacity = '0.5';
+      button.style.cursor = 'not-allowed';
+      // Se o botão desabilitado estava ativo, remove a classe active
+      if (button.classList.contains('active')) {
+        button.classList.remove('active');
+      }
+    }
+  });
+  
+  // Se nenhum botão ativo está habilitado, ativa o primeiro disponível
+  const activeButton = document.querySelector('.filter-period-button.active:not(.disabled)');
+  if (!activeButton && fallbackButton) {
+    fallbackButton.classList.add('active');
+    filterPeriod = fallbackButton.getAttribute('data-value');
+    // Regenera os gráficos com o novo período
+    regenerateChartsWithFilter();
+  }
+}
+
+// ==========================================
 // FUNÇÕES UTILITÁRIAS
 // ==========================================
 
@@ -795,22 +891,45 @@ const createPeriodButtons = () => {
     return aValue - bValue;
   });
 
+  let activePeriodSet = false;
+
   window.periodKeys.forEach((period, index) => {
     const button = document.createElement("button");
     button.classList.add("filter-period-button");
     button.setAttribute("data-value", period.value);
     button.textContent = period.name;
 
-    if (index === window.periodKeys.length - 1) {
-      button.classList.add("active");
-      // Inicializa ambos os períodos com o mesmo valor
-      fixedPeriod = period.value;
-      filterPeriod = period.value;
+    // Verifica se o período está disponível para os fundos selecionados
+    const isAvailable = isPeriodAvailableForSelectedFunds(period.value);
+    
+    if (isAvailable) {
+      button.classList.remove('disabled');
+      button.disabled = false;
+      button.style.opacity = '1';
+      button.style.cursor = 'pointer';
+      
+      // Define o primeiro período disponível como ativo se ainda não foi definido
+      if (!activePeriodSet) {
+        button.classList.add("active");
+        fixedPeriod = period.value;
+        filterPeriod = period.value;
+        activePeriodSet = true;
+      }
+    } else {
+      button.classList.add('disabled');
+      button.disabled = true;
+      button.style.opacity = '0.5';
+      button.style.cursor = 'not-allowed';
     }
 
     filterPeriodsDiv.appendChild(button);
 
     button.addEventListener("click", () => {
+      // Só processa o clique se o botão não estiver desabilitado
+      if (button.disabled || button.classList.contains('disabled')) {
+        return;
+      }
+
       const allButtons = document.querySelectorAll(".filter-period-button");
       allButtons.forEach((btn) => btn.classList.remove("active"));
 
@@ -823,6 +942,17 @@ const createPeriodButtons = () => {
       regenerateChartsWithFilter();
     });
   });
+
+  // Se nenhum período foi definido como ativo, ativa o último disponível
+  if (!activePeriodSet) {
+    const enabledButtons = document.querySelectorAll('.filter-period-button:not(.disabled)');
+    if (enabledButtons.length > 0) {
+      const lastButton = enabledButtons[enabledButtons.length - 1];
+      lastButton.classList.add("active");
+      fixedPeriod = lastButton.getAttribute("data-value");
+      filterPeriod = lastButton.getAttribute("data-value");
+    }
+  }
 };
 
 function rangeColors(rangeId, rangeColor, bgColor) {
@@ -1207,6 +1337,11 @@ function initializeSimulator() {
         createPeriodButtons();
         regenerateChartsWithFilter();
         renderFrontMonthTable();
+        
+        // Atualiza estado dos botões de período após limpar
+        setTimeout(() => {
+          updatePeriodButtonsState();
+        }, 100);
       });
     }
 
@@ -1380,6 +1515,9 @@ function initializeSimulator() {
 
         // Recalcula a composição total
         calculateWalletComposition();
+
+        // Atualiza o estado dos botões de período baseado na nova seleção
+        updatePeriodButtonsState();
       });
 
       rangeColors(
@@ -1404,6 +1542,11 @@ function initializeSimulator() {
       regenerateChartsWithFilter();
       createPeriodButtons();
       renderFrontMonthTable();
+      
+      // Atualiza estado dos botões de período após inicialização
+      setTimeout(() => {
+        updatePeriodButtonsState();
+      }, 100);
     }, 250);
   }, 250);
 
