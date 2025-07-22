@@ -155,12 +155,8 @@ function updatePeriodButtonsState() {
     // Regenera os gráficos com o novo período
     regenerateChartsWithFilter();
   }
-  
-  // Regenera a tabela com os períodos atualizados
-  const tableContainer = document.getElementById("tableContainer");
-  if (tableContainer) {
-    generateTableHistory();
-  }
+
+  flagPeriod = activeButton ? activeButton.getAttribute('data-value') : 'prof36m';
 }
 
 // ==========================================
@@ -1107,8 +1103,8 @@ function regenerateChartsWithFilter() {
 function initializeTableHistory() {
   const tableContainer = document.getElementById("tableContainer");
   if (tableContainer) {
-    // Cria uma tabela dinâmica baseada nos períodos disponíveis
-    tableContainer.innerHTML = generateDynamicTableHTML();
+    // Cria uma tabela vazia com a estrutura estática inicial
+    tableContainer.innerHTML = tableHTMLVolatility;
     // console.log("Tabela inicial criada");
   } else {
     console.warn(
@@ -1394,7 +1390,6 @@ function initializeSimulator() {
         initialChart();
         createPeriodButtons();
         regenerateChartsWithFilter();
-        renderFrontMonthTable();
         
         // Atualiza estado dos botões de período após limpar
         setTimeout(() => {
@@ -1529,16 +1524,10 @@ function initializeSimulator() {
           // Não força mudança para prof36m
 
           setTimeout(() => {
-            if (document.querySelector("#tableContainer table")) {
-              // console.log(`calcular ${filterPeriod}!`);
-              generateTableHistory();
-              regenerateChartsWithFilter();
-              renderFrontMonthTable();
-            } else {
-              console.warn(
-                "Tabela não encontrada no DOM. Não foi possível atualizar os valores."
-              );
-            }
+            // Sempre gera a tabela com os períodos ativos
+            generateTableHistory();
+            regenerateChartsWithFilter();
+            renderFrontMonthTable();
           }, 175);
 
           generateLineCharts("retornoAcumulado");
@@ -1612,7 +1601,6 @@ function initializeSimulator() {
       initialChart();
       regenerateChartsWithFilter();
       createPeriodButtons();
-      renderFrontMonthTable();
       
       // Atualiza estado dos botões de período após inicialização
       setTimeout(() => {
