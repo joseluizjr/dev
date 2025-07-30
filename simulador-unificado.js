@@ -117,7 +117,7 @@ function isPeriodAvailableForSelectedFunds(periodValue) {
 }
 
 // Função para atualizar estado dos botões de período
-function updatePeriodButtonsState() {
+function updatePeriodButtonsState(preventChartRegeneration = false) {
   const periodButtons = document.querySelectorAll('.filter-period-button');
   let hasEnabledButton = false;
   let fallbackButton = null;
@@ -152,8 +152,10 @@ function updatePeriodButtonsState() {
   if (!activeButton && fallbackButton) {
     fallbackButton.classList.add('active');
     filterPeriod = fallbackButton.getAttribute('data-value');
-    // Regenera os gráficos com o novo período
-    regenerateChartsWithFilter();
+    // Regenera os gráficos com o novo período apenas se não for uma chamada do rangeSlider
+    if (!preventChartRegeneration) {
+      regenerateChartsWithFilter();
+    }
   }
 }
 
@@ -1517,7 +1519,8 @@ function initializeSimulator() {
         calculateWalletComposition();
 
         // Atualiza o estado dos botões de período baseado na nova seleção
-        updatePeriodButtonsState();
+        // Passa true para evitar regeneração dos gráficos durante movimento do rangeSlider
+        updatePeriodButtonsState(true);
       });
 
       rangeColors(
