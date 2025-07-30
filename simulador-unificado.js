@@ -117,7 +117,7 @@ function isPeriodAvailableForSelectedFunds(periodValue) {
 }
 
 // Função para atualizar estado dos botões de período
-function updatePeriodButtonsState() {
+function updatePeriodButtonsState(shouldRegenerateCharts = false) {
   const periodButtons = document.querySelectorAll('.filter-period-button');
   let hasEnabledButton = false;
   let fallbackButton = null;
@@ -152,8 +152,10 @@ function updatePeriodButtonsState() {
   if (!activeButton && fallbackButton) {
     fallbackButton.classList.add('active');
     filterPeriod = fallbackButton.getAttribute('data-value');
-    // Regenera os gráficos com o novo período
-    regenerateChartsWithFilter();
+    // Regenera os gráficos com o novo período apenas se solicitado
+    if (shouldRegenerateCharts) {
+      regenerateChartsWithFilter();
+    }
   }
 }
 
@@ -1340,7 +1342,7 @@ function initializeSimulator() {
         
         // Atualiza estado dos botões de período após limpar
         setTimeout(() => {
-          updatePeriodButtonsState();
+          updatePeriodButtonsState(false);
         }, 100);
       });
     }
@@ -1516,8 +1518,9 @@ function initializeSimulator() {
         // Recalcula a composição total
         calculateWalletComposition();
 
-        // Atualiza o estado dos botões de período baseado na nova seleção
-        updatePeriodButtonsState();
+        // Atualiza o estado dos botões de período baseado na nova seleção 
+        // (sem regenerar gráficos - os gráficos de rentabilidade só são atualizados ao clicar em "Simular")
+        updatePeriodButtonsState(false);
       });
 
       rangeColors(
@@ -1545,7 +1548,7 @@ function initializeSimulator() {
       
       // Atualiza estado dos botões de período após inicialização
       setTimeout(() => {
-        updatePeriodButtonsState();
+        updatePeriodButtonsState(false);
       }, 100);
     }, 250);
   }, 250);
