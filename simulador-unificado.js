@@ -6,32 +6,23 @@
 const inputClienteTable = [];
 let relatorioPerformanceTable = [];
 let relatorioOtimizado = [];
+let enabledPeriods = [];
 
 // Chart Front
 let cdiFront = [];
 let ibovespaFront = [];
 let imabFront = [];
-let experienteFront = [];
-let moderadoFront = [];
-let conservadorFront = [];
 let portfolioFront = [];
-let selecaoPotencialFront = [];
-let selecaoEquilibrioFront = [];
-let selecaoCautelaFront = [];
-
-// Chart Drawdown
-let experienteDrawdown = [];
-let moderadoDrawdown = [];
-let conservadorDrawdown = [];
-let portfolioDrawdown = [];
-let selecaoPotencialDrawdown = [];
-let selecaoEquilibrioDrawdown = [];
-let selecaoCautelaDrawdown = [];
+let cdiFrontRetorno = [];
+let ibovespaFrontRetorno = [];
+let imabFrontRetorno = [];
+let portfolioFrontRetorno = [];
 
 // Variáveis do simulador.js
 var inputRangeEl = [];
 var buttonRangeEl = document.querySelector(".js-walletComposition-button");
 const buttonsPeriods = document.querySelector(".filterPeriods");
+let allAvailablePeriods = [];
 
 const MAX_VALUE = 10000;
 const diasUteis = 252;
@@ -40,8 +31,12 @@ const filterPeriodLength = 63;
 const RAIZ = Math.sqrt(diasUteis);
 
 // Períodos - declaração única
-let fixedPeriod = "prof36m"; // Período fixo para currentPortfolio
+
+// let fixedPeriod = "prof36m"; // Período fixo para currentPortfolio
+let fixedPeriod = "prof36m";
+let flagPeriod = "prof36m";
 let filterPeriod = fixedPeriod; // Período para os filtros
+let maxFilterPeriod = "prof36m"; // Período para os filtros
 
 // Arrays de dados - declaração única
 let meuPortfolioDiario = [];
@@ -50,6 +45,10 @@ let meuPortfolioDiarioIbov = [];
 let volatilidadeArray = [];
 let imabVolatilidadeArray = [];
 let ibovVolatilidadeArray = [];
+
+// drawdown
+let meuPortfolioDrawdown = [];
+let ibovespaDrawdown = [];
 
 // Outras variáveis
 const tableObject = {};
@@ -69,93 +68,127 @@ let simuladorInitialized = false;
 function calculateAvailablePeriods(startDateTimestamp) {
   const now = new Date();
   const startDate = new Date(startDateTimestamp);
-  const monthsDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-  
+  const monthsDiff =
+    (now.getFullYear() - startDate.getFullYear()) * 12 +
+    (now.getMonth() - startDate.getMonth());
+
   const availablePeriods = [];
-  
+
   // Verifica cada período
-  if (monthsDiff >= 3) availablePeriods.push('prof3m');
-  if (monthsDiff >= 6) availablePeriods.push('prof6m');
-  if (monthsDiff >= 12) availablePeriods.push('prof12m');
-  if (monthsDiff >= 24) availablePeriods.push('prof24m');
-  if (monthsDiff >= 36) availablePeriods.push('prof36m');
-  
+  if (monthsDiff >= 3) availablePeriods.push("prof3m");
+  if (monthsDiff >= 6) availablePeriods.push("prof6m");
+  if (monthsDiff >= 12) availablePeriods.push("prof12m");
+  if (monthsDiff >= 24) availablePeriods.push("prof24m");
+  if (monthsDiff >= 36) availablePeriods.push("prof36m");
+
   // YTD sempre disponível se iniciou no ano atual ou anteriores
   if (startDate.getFullYear() <= now.getFullYear()) {
-    availablePeriods.push('profYTD');
+    availablePeriods.push("profYTD");
   }
-  
+
+  allAvailablePeriods = availablePeriods;
+
   return availablePeriods;
 }
 
 // Função para verificar se um período está disponível para fundos selecionados
 function isPeriodAvailableForSelectedFunds(periodValue) {
   const selectedFunds = [];
-  
+
   // Coleta fundos com valor > 0
-  const rangeInputs = document.querySelectorAll('input[data-type="range-portfolio"]');
-  rangeInputs.forEach(input => {
+  const rangeInputs = document.querySelectorAll(
+    'input[data-type="range-portfolio"]'
+  );
+  rangeInputs.forEach((input) => {
     if (parseFloat(input.value) > 0) {
-      const fundId = input.id.replace('fund-', '');
-      const fund = window.portfolio?.find(f => f.id === fundId);
+      const fundId = input.id.replace("fund-", "");
+      const fund = window.portfolio?.find((f) => f.id === fundId);
       if (fund) {
         selectedFunds.push(fund);
       }
     }
   });
-  
+
   // Se nenhum fundo selecionado, permite todos os períodos
   if (selectedFunds.length === 0) {
     return true;
   }
-  
+
   // Verifica se todos os fundos selecionados suportam o período
-  return selectedFunds.every(fund => {
+  return selectedFunds.every((fund) => {
     const availablePeriods = calculateAvailablePeriods(fund.startDate);
     return availablePeriods.includes(periodValue);
   });
 }
 
 // Função para atualizar estado dos botões de período
-function updatePeriodButtonsState(shouldRegenerateCharts = false) {
-  const periodButtons = document.querySelectorAll('.filter-period-button');
+function updatePeriodButtonsState() {
+  const periodButtons = document.querySelectorAll(".filter-period-button");
   let hasEnabledButton = false;
   let fallbackButton = null;
-  
-  periodButtons.forEach(button => {
-    const periodValue = button.getAttribute('data-value');
+
+  periodButtons.forEach((button) => {
+    const periodValue = button.getAttribute("data-value");
     const isAvailable = isPeriodAvailableForSelectedFunds(periodValue);
-    
+
     if (isAvailable) {
-      button.classList.remove('disabled');
+      button.classList.remove("disabled");
       button.disabled = false;
-      button.style.opacity = '1';
-      button.style.cursor = 'pointer';
+      button.style.opacity = "1";
+      button.style.cursor = "pointer";
       if (!hasEnabledButton) {
         fallbackButton = button;
         hasEnabledButton = true;
       }
     } else {
-      button.classList.add('disabled');
+      button.classList.add("disabled");
       button.disabled = true;
-      button.style.opacity = '0.5';
-      button.style.cursor = 'not-allowed';
+      button.style.opacity = "0.5";
+      button.style.cursor = "not-allowed";
       // Se o botão desabilitado estava ativo, remove a classe active
-      if (button.classList.contains('active')) {
-        button.classList.remove('active');
+      if (button.classList.contains("active")) {
+        button.classList.remove("active");
       }
     }
   });
-  
+
   // Se nenhum botão ativo está habilitado, ativa o primeiro disponível
-  const activeButton = document.querySelector('.filter-period-button.active:not(.disabled)');
+  const activeButton = document.querySelector(
+    ".filter-period-button.active:not(.disabled)"
+  );
+  // console.log('activeButton: ', activeButton)
   if (!activeButton && fallbackButton) {
-    fallbackButton.classList.add('active');
-    filterPeriod = fallbackButton.getAttribute('data-value');
-    // Regenera os gráficos com o novo período apenas se solicitado
-    if (shouldRegenerateCharts) {
-      regenerateChartsWithFilter();
-    }
+    fallbackButton.classList.add("active");
+    filterPeriod = fallbackButton.getAttribute("data-value");
+    // Regenera os gráficos com o novo período
+    regenerateChartsWithFilter();
+  }
+
+  flagPeriod = activeButton
+    ? activeButton.getAttribute("data-value")
+    : "prof36m";
+  // console.log('flagPeriod: ', flagPeriod)
+
+  // Após adicionar todos os botões
+  const allButtons = document.querySelectorAll(
+    ".filter-period-button:not(.disabled)"
+  );
+
+  if (allButtons.length > 0) {
+    let minButton = allButtons[0];
+    let minDate = parseInt(minButton.getAttribute("data-startDate"), 10);
+
+    allButtons.forEach((btn) => {
+      const date = parseInt(btn.getAttribute("data-startDate"), 10);
+      if (date < minDate) {
+        minDate = date;
+        minButton = btn;
+      }
+    });
+
+    // Executa o clique no botão com menor data-startDate
+    minButton.click();
+    maxFilterPeriod = minButton.getAttribute("data-value");
   }
 }
 
@@ -301,11 +334,33 @@ function calcularDiferencaDiaria(portfolio) {
   return resultados;
 }
 
+function calcularDrawdown(dados) {
+  const resultado = [];
+
+  let maxValor = 0;
+
+  for (let i = 0; i < dados.length; i++) {
+    const [data, valor] = dados[i];
+
+    if (i === 0) {
+      resultado.push([data, 0]); // drawdown 0 fixo para o primeiro ponto
+      continue;
+    }
+
+    maxValor = Math.max(maxValor, valor);
+    const drawdown = ((valor - maxValor) / maxValor) * 100;
+
+    resultado.push([data, drawdown]);
+  }
+
+  return resultado;
+}
+
 // Função para calcular o desvio padrão (volatilidade diária)
 function calculaVolatilidadeRolling(type, portfolio) {
-  if (type === 'volatilidadeArray') {
+  if (type === "volatilidadeArray") {
     volatilidadeArray = [];
-  } else if (type === 'ibovVolatilidadeArray') {
+  } else if (type === "ibovVolatilidadeArray") {
     ibovVolatilidadeArray = [];
   } else {
     imabVolatilidadeArray = [];
@@ -316,12 +371,16 @@ function calculaVolatilidadeRolling(type, portfolio) {
   for (let i = filterPeriodLength - 1; i < portfolio.length; i++) {
     const janela = portfolio.slice(i - filterPeriodLength + 1, i + 1);
 
-    const retornos = janela.map(([_, val]) => val).filter((val) => typeof val === "number" && !isNaN(val));
+    const retornos = janela
+      .map(([_, val]) => val)
+      .filter((val) => typeof val === "number" && !isNaN(val));
 
     if (retornos.length === 0) continue;
 
     const media = retornos.reduce((acc, val) => acc + val, 0) / retornos.length;
-    const variancia = retornos.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) / retornos.length;
+    const variancia =
+      retornos.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) /
+      retornos.length;
     const desvioPadrao = Math.sqrt(variancia);
     const volatilidadeAnualizada = desvioPadrao * Math.sqrt(252) * 100;
 
@@ -412,17 +471,17 @@ const generateLineCharts = (containerId) => {
     series: [
       {
         name: "Meu Portfólio",
-        data: portfolioFront,
+        data: portfolioFrontRetorno,
         color: window.colors?.[0] || "#ED7020",
       },
       {
         name: "IBOV",
-        data: ibovespaFront,
+        data: ibovespaFrontRetorno,
         color: window.colorsIndexes?.[1] || "#ADB6BB",
       },
       {
         name: "CDI",
-        data: cdiFront,
+        data: cdiFrontRetorno,
         color: window.colorsIndexes?.[2] || "#F4A766",
       },
     ],
@@ -517,6 +576,106 @@ const generateLineChartsVolatilidade = (containerId) => {
         name: "IMA-B",
         data: imabVolatilidadeArray,
         color: window.colorsIndexes?.[2] || "#F4A766",
+      },
+    ],
+  });
+};
+
+// generate line charts
+const generateAreaCharts = (containerId) => {
+  if (!window.Highcharts) {
+    console.error("Highcharts não está disponível");
+    return;
+  }
+
+  Highcharts.stockChart(containerId, {
+    chart: {
+      backgroundColor: null,
+      zoomType: null,
+      events: {
+        load: function () {
+          // Bloqueia o scroll do mouse para zoom
+          this.container.onwheel = (e) => {
+            e.preventDefault();
+          };
+        },
+      },
+    },
+    title: { text: "" },
+    credits: { enabled: false },
+    subtitle: { text: "" },
+    rangeSelector: { enabled: false },
+    navigator: { enabled: false },
+    exporting: { enabled: false },
+    scrollbar: { enabled: false },
+
+    yAxis: {
+      opposite: false,
+      gridLineColor: "#071115",
+      labels: {
+        formatter: function () {
+          return this.value + "%";
+        },
+        style: {
+          fontSize: "18px",
+          color: "#000",
+        },
+      },
+    },
+
+    xAxis: {
+      gridLineColor: "#071115",
+      labels: {
+        formatter: function () {
+          return Highcharts.dateFormat("%d/%m/%y", this.value); // Formato: dd.mm.yy
+        },
+        style: {
+          color: "#000",
+        },
+      },
+      type: "datetime",
+      tickPixelInterval: 100,
+    },
+
+    legend: {
+      enabled: true,
+      layout: "horizontal",
+      align: "center",
+      verticalAlign: "bottom",
+      itemStyle: {
+        color: "#000",
+        fontSize: "14px",
+      },
+    },
+
+    tooltip: {
+      shared: true,
+      valueDecimals: 2,
+      valueSuffix: "%",
+      // xDateFormat: "%d/%m/%Y",
+      xDateFormat: "%d de %b de %Y",
+      formatter: function () {
+        const formattedDate = Highcharts.dateFormat("%d de %b de %Y", this.x);
+        let tooltipContent = `<b>${formattedDate}</b>`;
+        this.points.forEach((point) => {
+          tooltipContent += `<br /><br /><span style="color:${
+            point.series.color
+          }">\u25CF</span> <b>${point.series.name}</b>: ${point.y.toFixed(2)}%`;
+        });
+        return tooltipContent;
+      },
+    },
+
+    series: [
+      {
+        name: "Meu Portfólio",
+        data: calcularDrawdown(portfolioFront),
+        color: window.colors?.[0] || "#ED7020",
+      },
+      {
+        name: "IBOV",
+        data: calcularDrawdown(ibovespaFront),
+        color: window.colorsIndexes?.[1] || "#ADB6BB",
       },
     ],
   });
@@ -696,6 +855,187 @@ const tableHTMLVolatility = `
       `;
 
 // Generate table
+
+// Função para gerar tabela dinâmica baseada nos períodos disponíveis
+function generateDynamicTableHTML() {
+  // Pega apenas os períodos que estão habilitados no gráfico
+  enabledPeriods = [];
+  const periodButtons = document.querySelectorAll(
+    ".filter-period-button:not(.disabled)"
+  );
+
+  periodButtons.forEach((button) => {
+    const periodValue = button.getAttribute("data-value");
+    const periodStart = button.getAttribute("data-startDate");
+    const periodName = button.textContent;
+
+    // Mapeia os valores para labels usados na tabela
+    let label = "";
+    if (periodValue === "prof3m") label = "3m";
+    else if (periodValue === "prof6m") label = "6m";
+    else if (periodValue === "prof12m") label = "12m";
+    else if (periodValue === "prof24m") label = "24m";
+    else if (periodValue === "prof36m") label = "36m";
+    else if (periodValue === "profYTD") label = "YTD";
+
+    if (label) {
+      enabledPeriods.push({
+        value: periodValue,
+        name: periodName,
+        label: label,
+        startDate: periodStart,
+      });
+    }
+  });
+
+  // Gera as linhas da tabela dinamicamente
+  let tableRows = "";
+  enabledPeriods.forEach((period) => {
+    tableRows += `
+      <tr class="linha-${period.label}">
+        <td>${period.name}</td>
+        <td class="item-1">-</td>
+        <td class="item-2">-</td>
+        <td class="item-3">-</td>
+      </tr>
+    `;
+  });
+
+  return `
+    <div class="table-container" style="width: 100%; display: inline-block;">
+      <!-- Tabela de valores -->
+      <div class="table-box d-none">
+        <table>
+          <thead>
+            <tr>
+              <th colspan="5">Volatilidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="section-title">
+              <td colspan="5">Portfólio</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-1 endDate">-</td>
+              <td class="linha-1 startDate">-</td>
+              <td class="linha-1 end-value">-</td>
+              <td class="linha-1 start-value">-</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-2 endDate">-</td>
+              <td class="linha-2 startDate">-</td>
+              <td class="linha-2 end-value">-</td>
+              <td class="linha-2 start-value">-</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-3 endDate">-</td>
+              <td class="linha-3 startDate">-</td>
+              <td class="linha-3 end-value">-</td>
+              <td class="linha-3 start-value">-</td>
+            </tr>
+            <tr class="portfolio">
+              <td class="linha-4 endDate">-</td>
+              <td class="linha-4 startDate">-</td>
+              <td class="linha-4 end-value">-</td>
+              <td class="linha-4 start-value">-</td>
+            </tr>
+            <tr class="portfolio d-none">
+              <td class="linha-5 endDate">-</td>
+              <td class="linha-5 startDate">-</td>
+              <td class="linha-5 end-value">-</td>
+              <td class="linha-5 start-value">-</td>
+            </tr>
+            <tr class="section-title">
+              <td colspan="4">CDI</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-1 endDate">-</td>
+              <td class="linha-1 startDate">-</td>
+              <td class="linha-1 end-value">-</td>
+              <td class="linha-1 start-value">-</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-2 endDate">-</td>
+              <td class="linha-2 startDate">-</td>
+              <td class="linha-2 end-value">-</td>
+              <td class="linha-2 start-value">-</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-3 endDate">-</td>
+              <td class="linha-3 startDate">-</td>
+              <td class="linha-3 end-value">-</td>
+              <td class="linha-3 start-value">-</td>
+            </tr>
+            <tr class="cdi">
+              <td class="linha-4 endDate">-</td>
+              <td class="linha-4 startDate">-</td>
+              <td class="linha-4 end-value">-</td>
+              <td class="linha-4 start-value">-</td>
+            </tr>
+            <tr class="cdi d-none">
+              <td class="linha-5 endDate">-</td>
+              <td class="linha-5 startDate">-</td>
+              <td class="linha-5 end-value">-</td>
+              <td class="linha-5 start-value">-</td>
+            </tr>
+            <tr class="section-title">
+              <td colspan="4">IBOV</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-1 endDate">-</td>
+              <td class="linha-1 startDate">-</td>
+              <td class="linha-1 end-value">-</td>
+              <td class="linha-1 start-value">-</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-2 endDate">-</td>
+              <td class="linha-2 startDate">-</td>
+              <td class="linha-2 end-value">-</td>
+              <td class="linha-2 start-value">-</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-3 endDate">-</td>
+              <td class="linha-3 startDate">-</td>
+              <td class="linha-3 end-value">-</td>
+              <td class="linha-3 start-value">-</td>
+            </tr>
+            <tr class="ibov">
+              <td class="linha-4 endDate">-</td>
+              <td class="linha-4 startDate">-</td>
+              <td class="linha-4 end-value">-</td>
+              <td class="linha-4 start-value">-</td>
+            </tr>
+            <tr class="ibov d-none">
+              <td class="linha-5 endDate">-</td>
+              <td class="linha-5 startDate">-</td>
+              <td class="linha-5 end-value">-</td>
+              <td class="linha-5 start-value">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tabela de percentuais - DINÂMICA -->
+      <div class="table-box">
+        <table class="percentage-table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Portfólio</th>
+              <th>CDI</th>
+              <th>IBOV</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// Generate table
 const generateTableHistory = (data) => {
   // Verifica se o elemento tableContainer existe
   const tableContainer = document.getElementById("tableContainer");
@@ -704,8 +1044,8 @@ const generateTableHistory = (data) => {
     return;
   }
 
-  // Inserindo a tabela no DOM
-  tableContainer.innerHTML = tableHTMLVolatility;
+  // Gera e insere a tabela dinâmica baseada nos períodos ativos
+  tableContainer.innerHTML = generateDynamicTableHTML();
 };
 
 function renderFrontMonth() {
@@ -763,7 +1103,14 @@ function renderFrontMonthTable() {
     return;
   }
 
-  const { prof3m, prof6m, prof12m, prof24m, prof36m, profYTD } = window.BaseRetornosDiarios.profitabilitiesByPeriod;
+  const { prof3m, prof6m, prof12m, prof24m, prof36m, profYTD } =
+    window.BaseRetornosDiarios.profitabilitiesByPeriod;
+
+  // Pega apenas os períodos que estão habilitados no gráfico
+  enabledPeriods = [];
+  const periodButtons = document.querySelectorAll(
+    ".filter-period-button:not(.disabled)"
+  );
 
   meuPortfolioDiario = [];
   meuPortfolioDiarioImab = [];
@@ -772,82 +1119,146 @@ function renderFrontMonthTable() {
   imabVolatilidadeArray = [];
   ibovVolatilidadeArray = [];
 
-  const periods = [
-    { label: "3m", offset: prof3m?.length - 1 || 0 },
-    { label: "6m", offset: prof6m?.length - 1 || 0 },
-    { label: "12m", offset: prof12m?.length - 1 || 0 },
-    { label: "24m", offset: prof24m?.length - 1 || 0 },
-    { label: "36m", offset: prof36m?.length - 1 || 0 },
-    { label: "YTD", offset: profYTD?.length - 1 || 0 },
-  ];
+  periodButtons.forEach((button) => {
+    const periodValue = button.getAttribute("data-value");
+    let label = "";
+    let offset = 0;
 
-  const totalIndex = prof36m?.length - 1 || 0;
+    if (periodValue === "prof3m") {
+      label = "3m";
+      offset = prof3m?.length - 1 || 0;
+    } else if (periodValue === "prof6m") {
+      label = "6m";
+      offset = prof6m?.length - 1 || 0;
+    } else if (periodValue === "prof12m") {
+      label = "12m";
+      offset = prof12m?.length - 1 || 0;
+    } else if (periodValue === "prof24m") {
+      label = "24m";
+      offset = prof24m?.length - 1 || 0;
+    } else if (periodValue === "prof36m") {
+      label = "36m";
+      offset = prof36m?.length - 1 || 0;
+    } else if (periodValue === "profYTD") {
+      label = "YTD";
+      offset = profYTD?.length - 1 || 0;
+    }
 
-  if (portfolioFront.length === 0 || cdiFront.length === 0) {
-    console.error("Dados dos gráficos não estão disponíveis");
-    return;
-  }
-
-  const endDate = formatTimestamp(portfolioFront[totalIndex][0], "pt-br");
-  const portfolioEndValue = portfolioFront[totalIndex][1];
-  const cdiEndValue = cdiFront[totalIndex][1];
-  const ibovEndValue = ibovespaFront[totalIndex][1];
-
-  periods.forEach((period, i) => {
-    const linha = i + 1;
-    const index = totalIndex - period.offset;
-    const startDate = formatTimestamp(portfolioFront[index][0], "pt-br");
-    const portfolioStartValue = portfolioFront[index][1];
-    const cdiStartValue = cdiFront[index][1];
-    const ibovStartValue = ibovespaFront[index][1];
-
-    // Atualiza as células da tabela PORTFOLIO
-    updateCellText(`.portfolio .linha-${linha}.endDate`, endDate);
-    updateCellText(`.portfolio .linha-${linha}.startDate`, startDate);
-    updateCellText(`.portfolio .linha-${linha}.end-value`, formatNumber(portfolioEndValue));
-    updateCellText(`.portfolio .linha-${linha}.start-value`, formatNumber(portfolioStartValue));
-
-    // Atualiza as células da tabela CDI
-    updateCellText(`.cdi .linha-${linha}.endDate`, endDate);
-    updateCellText(`.cdi .linha-${linha}.startDate`, startDate);
-    updateCellText(`.cdi .linha-${linha}.end-value`, formatNumber(cdiEndValue));
-    updateCellText(`.cdi .linha-${linha}.start-value`, formatNumber(cdiStartValue));
-
-    // Atualiza as células da tabela IBOVESPA
-    updateCellText(`.ibov .linha-${linha}.endDate`, endDate);
-    updateCellText(`.ibov .linha-${linha}.startDate`, startDate);
-    updateCellText(`.ibov .linha-${linha}.end-value`, formatNumber(ibovEndValue));
-    updateCellText(`.ibov .linha-${linha}.start-value`, formatNumber(ibovStartValue));
-
-    // Atualiza a tabela de percentuais
-    const label = period.label;
-    const portfolioPerf = ((portfolioEndValue / portfolioStartValue - 1) * 100).toFixed(2);
-    const cdiPerf = ((cdiEndValue / cdiStartValue - 1) * 100).toFixed(2);
-    const ibovPerf = ((ibovEndValue / ibovStartValue - 1) * 100).toFixed(2);
-    updateCellText(`.linha-${label} .item-1`, `${portfolioPerf.replace(".", ",")}%`);
-    updateCellText(`.linha-${label} .item-2`, `${cdiPerf.replace(".", ",")}%`);
-    updateCellText(`.linha-${label} .item-3`, `${ibovPerf.replace(".", ",")}%`);
+    if (label) {
+      enabledPeriods.push({ label, offset });
+    }
   });
 
-  // Calcular a diferença diária
-  const resultado = calcularDiferencaDiaria(portfolioFront);
-  resultado.forEach(([timestamp, diff]) => {
-    meuPortfolioDiario.push([timestamp, Number(diff)]);
-  });
-  const resultadoImab = calcularDiferencaDiaria(imabFront);
-  resultadoImab.forEach(([timestamp, diff]) => {
-    meuPortfolioDiarioImab.push([timestamp, Number(diff)]);
-  });
-  const resultadoIbov = calcularDiferencaDiaria(ibovespaFront);
-  resultadoIbov.forEach(([timestamp, diff]) => {
-    meuPortfolioDiarioIbov.push([timestamp, Number(diff)]);
-  });
+  setTimeout(() => {
+    let totalIndex = portfolioFront.length - 1 ?? 0;
 
-  // Calcular a volatilidade diária para o meuPortfolioDiario
-  volatilidadeArray = calculaVolatilidadeRolling('volatilidadeArray', meuPortfolioDiario);
-  imabVolatilidadeArray = calculaVolatilidadeRolling('imabVolatilidadeArray', meuPortfolioDiarioImab);
-  ibovVolatilidadeArray = calculaVolatilidadeRolling('ibovVolatilidadeArray', meuPortfolioDiarioIbov);
-  generateLineChartsVolatilidade("volatilidadeDiaria");
+    if (portfolioFront.length === 0 || cdiFront.length === 0) {
+      console.error("Dados dos gráficos não estão disponíveis");
+      return;
+    }
+
+    const endDate = formatTimestamp(portfolioFront.at(-1)[0], "pt-br");
+    const portfolioEndValue = portfolioFront.at(-1)[1];
+    const cdiEndValue = cdiFront.at(-1)[1];
+    const ibovEndValue = ibovespaFront.at(-1)[1];
+
+    if (!window.BaseRetornosDiarios?.profitabilitiesByPeriod) {
+      console.error("BaseRetornosDiarios não está disponível");
+      return;
+    }
+
+    enabledPeriods.forEach((period, i) => {
+      const linha = i + 1;
+      const index = totalIndex - period.offset;
+      const startDate = formatTimestamp(portfolioFront[index][0], "pt-br");
+      const portfolioStartValue = portfolioFront[index][1];
+      const cdiStartValue = cdiFront[index][1];
+      const ibovStartValue = ibovespaFront[index][1];
+
+      // Atualiza as células da tabela PORTFOLIO
+      updateCellText(`.portfolio .linha-${linha}.endDate`, endDate);
+      updateCellText(`.portfolio .linha-${linha}.startDate`, startDate);
+      updateCellText(
+        `.portfolio .linha-${linha}.end-value`,
+        formatNumber(portfolioEndValue)
+      );
+      updateCellText(
+        `.portfolio .linha-${linha}.start-value`,
+        formatNumber(portfolioStartValue)
+      );
+
+      // Atualiza as células da tabela CDI
+      updateCellText(`.cdi .linha-${linha}.endDate`, endDate);
+      updateCellText(`.cdi .linha-${linha}.startDate`, startDate);
+      updateCellText(
+        `.cdi .linha-${linha}.end-value`,
+        formatNumber(cdiEndValue)
+      );
+      updateCellText(
+        `.cdi .linha-${linha}.start-value`,
+        formatNumber(cdiStartValue)
+      );
+
+      // Atualiza as células da tabela IBOVESPA
+      updateCellText(`.ibov .linha-${linha}.endDate`, endDate);
+      updateCellText(`.ibov .linha-${linha}.startDate`, startDate);
+      updateCellText(
+        `.ibov .linha-${linha}.end-value`,
+        formatNumber(ibovEndValue)
+      );
+      updateCellText(
+        `.ibov .linha-${linha}.start-value`,
+        formatNumber(ibovStartValue)
+      );
+
+      // Atualiza a tabela de percentuais
+      const label = period.label;
+      const portfolioPerf = (
+        (portfolioEndValue / portfolioStartValue - 1) *
+        100
+      ).toFixed(2);
+      const cdiPerf = ((cdiEndValue / cdiStartValue - 1) * 100).toFixed(2);
+      const ibovPerf = ((ibovEndValue / ibovStartValue - 1) * 100).toFixed(2);
+      updateCellText(
+        `.linha-${label} .item-1`,
+        `${portfolioPerf.replace(".", ",")}%`
+      );
+      updateCellText(
+        `.linha-${label} .item-2`,
+        `${cdiPerf.replace(".", ",")}%`
+      );
+      updateCellText(
+        `.linha-${label} .item-3`,
+        `${ibovPerf.replace(".", ",")}%`
+      );
+    });
+
+    // Calcular a diferença diária
+    const resultado = calcularDiferencaDiaria(portfolioFront);
+    resultado.forEach(([timestamp, diff]) => {
+      meuPortfolioDiario.push([timestamp, Number(diff)]);
+    });
+
+    const resultadoImab = calcularDiferencaDiaria(imabFront);
+    resultadoImab.forEach(([timestamp, diff]) => {
+      meuPortfolioDiarioImab.push([timestamp, Number(diff)]);
+    });
+
+    const resultadoIbov = calcularDiferencaDiaria(ibovespaFront);
+    resultadoIbov.forEach(([timestamp, diff]) => {
+      meuPortfolioDiarioIbov.push([timestamp, Number(diff)]);
+    });
+
+
+    // Calcular a volatilidade diária para o meuPortfolioDiario
+    volatilidadeArray = calculaVolatilidadeRolling("volatilidadeArray", meuPortfolioDiario);
+    imabVolatilidadeArray = calculaVolatilidadeRolling("imabVolatilidadeArray", meuPortfolioDiarioImab);
+    ibovVolatilidadeArray = calculaVolatilidadeRolling("ibovVolatilidadeArray", meuPortfolioDiarioIbov);
+    generateLineChartsVolatilidade("volatilidadeDiaria");
+    setTimeout(() => {
+      generateAreaCharts("drawdown");
+    }, 500);
+  }, 500);
 }
 
 // ==========================================
@@ -863,6 +1274,7 @@ function activatePeriodButton(periodValue) {
   if (targetButton) {
     targetButton.classList.add("active");
     filterPeriod = periodValue;
+    flagPeriod = periodValue;
     // console.log(`Período ${periodValue} ativado`);
   } else {
     // console.warn(`Botão com data-value="${periodValue}" não encontrado`);
@@ -885,8 +1297,8 @@ const createPeriodButtons = () => {
   }
 
   window.periodKeys.sort((a, b) => {
-    if (a.value === 'profYTD') return 1;
-    if (b.value === 'profYTD') return -1;
+    if (a.value === "profYTD") return 1;
+    if (b.value === "profYTD") return -1;
 
     const aValue = Number.parseInt(a.value.match(/\d+/)?.[0] || 0, 10);
     const bValue = Number.parseInt(b.value.match(/\d+/)?.[0] || 0, 10);
@@ -899,36 +1311,38 @@ const createPeriodButtons = () => {
     const button = document.createElement("button");
     button.classList.add("filter-period-button");
     button.setAttribute("data-value", period.value);
+    button.setAttribute("data-startDate", period.startDate);
     button.textContent = period.name;
 
     // Verifica se o período está disponível para os fundos selecionados
     const isAvailable = isPeriodAvailableForSelectedFunds(period.value);
-    
+
     if (isAvailable) {
-      button.classList.remove('disabled');
+      button.classList.remove("disabled");
       button.disabled = false;
-      button.style.opacity = '1';
-      button.style.cursor = 'pointer';
-      
+      button.style.opacity = "1";
+      button.style.cursor = "pointer";
+
       // Define o primeiro período disponível como ativo se ainda não foi definido
-      if (!activePeriodSet) {
+      // if (!activePeriodSet) {
+      if (period.value === filterPeriod) {
         button.classList.add("active");
-        fixedPeriod = period.value;
         filterPeriod = period.value;
         activePeriodSet = true;
       }
     } else {
-      button.classList.add('disabled');
+      console.table(period, "not allowed");
+      button.classList.add("disabled");
       button.disabled = true;
-      button.style.opacity = '0.5';
-      button.style.cursor = 'not-allowed';
+      button.style.opacity = "0.5";
+      button.style.cursor = "not-allowed";
     }
 
     filterPeriodsDiv.appendChild(button);
 
     button.addEventListener("click", () => {
       // Só processa o clique se o botão não estiver desabilitado
-      if (button.disabled || button.classList.contains('disabled')) {
+      if (button.disabled || button.classList.contains("disabled")) {
         return;
       }
 
@@ -939,20 +1353,31 @@ const createPeriodButtons = () => {
 
       // Atualiza apenas o filterPeriod, mantendo fixedPeriod inalterado
       filterPeriod = button.getAttribute("data-value");
+      flagPeriod = button.getAttribute("data-value");
 
       // Regenera apenas os gráficos com o novo período de filtro
       regenerateChartsWithFilter();
     });
   });
 
-  // Se nenhum período foi definido como ativo, ativa o último disponível
+  // Se nenhum período foi definido como ativo, ativa o prof36m como padrão
   if (!activePeriodSet) {
-    const enabledButtons = document.querySelectorAll('.filter-period-button:not(.disabled)');
-    if (enabledButtons.length > 0) {
+    const enabledButtons = document.querySelectorAll(
+      ".filter-period-button:not(.disabled)"
+    );
+    const profButton = Array.from(enabledButtons).find(
+      (btn) => btn.getAttribute("data-value") === "prof36m"
+    );
+
+    if (profButton) {
+      profButton.classList.add("active");
+      filterPeriod = flagPeriod;
+      flagPeriod = flagPeriod;
+    } else if (enabledButtons.length > 0) {
       const lastButton = enabledButtons[enabledButtons.length - 1];
       lastButton.classList.add("active");
-      fixedPeriod = lastButton.getAttribute("data-value");
       filterPeriod = lastButton.getAttribute("data-value");
+      flagPeriod = lastButton.getAttribute("data-value");
     }
   }
 };
@@ -992,6 +1417,10 @@ function regenerateChartsWithFilter() {
   cdiFront = [];
   ibovespaFront = [];
   imabFront = [];
+  portfolioFrontRetorno = [];
+  cdiFrontRetorno = [];
+  ibovespaFrontRetorno = [];
+  imabFrontRetorno = [];
 
   // Recria os dados dos gráficos usando o filterPeriod
   const filteredPortfolio =
@@ -1033,14 +1462,30 @@ function regenerateChartsWithFilter() {
   // Popula os arrays para os gráficos
   filteredPortfolio.forEach((relatorio) => {
     const timestamp = dateToTimestamp(relatorio.date);
-    const ibovIndexValue = relatorio.indexes[window.indexes?.find((index) => index.slug === "ibov")?.id];
-    const cdiIndexValue = relatorio.indexes[window.indexes?.find((index) => index.slug === "cdi")?.id];
-    const imabIndexValue = relatorio.indexes[window.indexes?.find((index) => index.slug === "ima")?.id];
+    const ibovIndexValue =
+      relatorio.indexes[
+        window.indexes?.find((index) => index.slug === "ibov")?.id
+      ];
+    const cdiIndexValue =
+      relatorio.indexes[
+        window.indexes?.find((index) => index.slug === "cdi")?.id
+      ];
+    const imabIndexValue =
+      relatorio.indexes[
+        window.indexes?.find((index) => index.slug === "ima")?.id
+      ];
 
     if (imabIndexValue) imabFront.push([timestamp, imabIndexValue]);
     if (ibovIndexValue) ibovespaFront.push([timestamp, ibovIndexValue]);
     if (cdiIndexValue) cdiFront.push([timestamp, cdiIndexValue]);
     portfolioFront.push([timestamp, relatorio.value]);
+
+    if (imabIndexValue)
+      imabFrontRetorno.push([timestamp, imabIndexValue - 100]);
+    if (ibovIndexValue)
+      ibovespaFrontRetorno.push([timestamp, ibovIndexValue - 100]);
+    if (cdiIndexValue) cdiFrontRetorno.push([timestamp, cdiIndexValue - 100]);
+    portfolioFrontRetorno.push([timestamp, relatorio.value - 100]);
   });
 
   // Regenera apenas o gráfico de linha
@@ -1260,6 +1705,8 @@ function initializeSimulator() {
       });
 
       if (buttonRangeEl) {
+        flagPeriod = maxFilterPeriod;
+        filterPeriod = maxFilterPeriod;
         buttonRangeEl.click();
       }
     }, 250);
@@ -1293,6 +1740,8 @@ function initializeSimulator() {
     // Adiciona o evento de clique no botão de limpar
     if (clearButton) {
       clearButton.addEventListener("click", () => {
+        flagPeriod = "prof36m";
+        maxFilterPeriod = "prof36m";
         for (let i = 0; i < 2; i++) {
           // Itera sobre os inputs de faixa (range)
           rangeInputs.forEach((input, index) => {
@@ -1339,10 +1788,10 @@ function initializeSimulator() {
         createPeriodButtons();
         regenerateChartsWithFilter();
         renderFrontMonthTable();
-        
+
         // Atualiza estado dos botões de período após limpar
         setTimeout(() => {
-          updatePeriodButtonsState(false);
+          updatePeriodButtonsState();
         }, 100);
       });
     }
@@ -1359,19 +1808,15 @@ function initializeSimulator() {
           element.classList.add("disabled");
         });
 
-        this.innerHTML = "Carregando...";
-
-        // Define o período como prof36m ao clicar em simular
-        // filterPeriod = "prof36m";
-        // fixedPeriod = "prof36m";
-        filterPeriod = filterPeriod || "prof36m";
-        fixedPeriod = filterPeriod || "prof36m";
-
         let currentPortfolio = [];
         portfolioFront = [];
         cdiFront = [];
         ibovespaFront = [];
         imabFront = [];
+        portfolioFrontRetorno = [];
+        cdiFrontRetorno = [];
+        ibovespaFrontRetorno = [];
+        imabFrontRetorno = [];
 
         document.querySelectorAll(".hide-section-chart").forEach((element) => {
           element.classList.remove("hide-section-chart");
@@ -1396,8 +1841,6 @@ function initializeSimulator() {
         });
 
         setTimeout(() => {
-          this.innerHTML = "Simular";
-
           if (
             !window.BaseRetornosDiarios?.profitabilitiesByPeriod?.[filterPeriod]
           ) {
@@ -1444,19 +1887,44 @@ function initializeSimulator() {
 
           currentPortfolio.forEach((relatorio) => {
             const timestamp = dateToTimestamp(relatorio.date);
-            const ibovIndexValue = relatorio.indexes[window.indexes?.find((index) => index.slug === "ibov")?.id];
-            const cdiIndexValue = relatorio.indexes[window.indexes?.find((index) => index.slug === "cdi")?.id];
-            const imabIndexValue = relatorio.indexes[window.indexes?.find((index) => index.slug === "ima")?.id];
+            const ibovIndexValue =
+              relatorio.indexes[
+                window.indexes?.find((index) => index.slug === "ibov")?.id
+              ];
+            const cdiIndexValue =
+              relatorio.indexes[
+                window.indexes?.find((index) => index.slug === "cdi")?.id
+              ];
+            const imabIndexValue =
+              relatorio.indexes[
+                window.indexes?.find((index) => index.slug === "ima")?.id
+              ];
 
             if (ibovIndexValue) ibovespaFront.push([timestamp, ibovIndexValue]);
             if (cdiIndexValue) cdiFront.push([timestamp, cdiIndexValue]);
             if (imabIndexValue) imabFront.push([timestamp, imabIndexValue]);
             portfolioFront.push([timestamp, relatorio.value]);
+
+            if (ibovIndexValue)
+              ibovespaFrontRetorno.push([timestamp, ibovIndexValue - 100]);
+            if (cdiIndexValue)
+              cdiFrontRetorno.push([timestamp, cdiIndexValue - 100]);
+            if (imabIndexValue)
+              imabFrontRetorno.push([timestamp, imabIndexValue - 100]);
+            portfolioFrontRetorno.push([timestamp, relatorio.value - 100]);
           });
 
           // Ativa o botão de 36 meses após processar os dados
           setTimeout(() => {
-            activatePeriodButton("prof36m");
+            activatePeriodButton(maxFilterPeriod);
+
+            setTimeout(() => {
+              document
+                .querySelectorAll(
+                  `.filter-period-button[data-value='${maxFilterPeriod}']`
+                )
+                .forEach((el) => el.click());
+            }, 200);
           }, 100);
 
           setTimeout(() => {
@@ -1470,7 +1938,7 @@ function initializeSimulator() {
                 "Tabela não encontrada no DOM. Não foi possível atualizar os valores."
               );
             }
-          }, 175);
+          }, 350);
 
           generateLineCharts("retornoAcumulado");
         }, 250);
@@ -1518,9 +1986,8 @@ function initializeSimulator() {
         // Recalcula a composição total
         calculateWalletComposition();
 
-        // Atualiza o estado dos botões de período baseado na nova seleção 
-        // (sem regenerar gráficos - os gráficos de rentabilidade só são atualizados ao clicar em "Simular")
-        updatePeriodButtonsState(false);
+        // Atualiza o estado dos botões de período baseado na nova seleção
+        updatePeriodButtonsState();
       });
 
       rangeColors(
@@ -1545,10 +2012,10 @@ function initializeSimulator() {
       regenerateChartsWithFilter();
       createPeriodButtons();
       renderFrontMonthTable();
-      
+
       // Atualiza estado dos botões de período após inicialização
       setTimeout(() => {
-        updatePeriodButtonsState(false);
+        updatePeriodButtonsState();
       }, 100);
     }, 250);
   }, 250);
