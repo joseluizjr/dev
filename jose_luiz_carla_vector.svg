@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient for the hearts -->
+    <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ee5a52;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for the text -->
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2c3e50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3498db;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="200" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2" rx="10"/>
+  
+  <!-- Title text -->
+  <text x="200" y="40" text-anchor="middle" font-family="serif" font-size="24" font-weight="bold" fill="url(#textGradient)">
+    José Luiz
+  </text>
+  
+  <!-- Heart between names -->
+  <path d="M200 60 C190 50, 175 50, 175 65 C175 80, 200 100, 200 100 C200 100, 225 80, 225 65 C225 50, 210 50, 200 60 Z" 
+        fill="url(#heartGradient)" stroke="#c0392b" stroke-width="1"/>
+  
+  <!-- Bottom text -->
+  <text x="200" y="140" text-anchor="middle" font-family="serif" font-size="24" font-weight="bold" fill="url(#textGradient)">
+    Carla
+  </text>
+  
+  <!-- Decorative hearts around the names -->
+  <path d="M80 70 C75 65, 68 65, 68 72 C68 79, 80 87, 80 87 C80 87, 92 79, 92 72 C92 65, 85 65, 80 70 Z" 
+        fill="#ff9999" opacity="0.7"/>
+  
+  <path d="M320 70 C315 65, 308 65, 308 72 C308 79, 320 87, 320 87 C320 87, 332 79, 332 72 C332 65, 325 65, 320 70 Z" 
+        fill="#ff9999" opacity="0.7"/>
+  
+  <path d="M80 130 C75 125, 68 125, 68 132 C68 139, 80 147, 80 147 C80 147, 92 139, 92 132 C92 125, 85 125, 80 130 Z" 
+        fill="#ff9999" opacity="0.7"/>
+  
+  <path d="M320 130 C315 125, 308 125, 308 132 C308 139, 320 147, 320 147 C320 147, 332 139, 332 132 C332 125, 325 125, 320 130 Z" 
+        fill="#ff9999" opacity="0.7"/>
+  
+  <!-- Small decorative elements -->
+  <circle cx="50" cy="100" r="3" fill="#ffeaa7" opacity="0.8"/>
+  <circle cx="350" cy="100" r="3" fill="#ffeaa7" opacity="0.8"/>
+  <circle cx="200" cy="30" r="2" fill="#ffeaa7" opacity="0.8"/>
+  <circle cx="200" cy="170" r="2" fill="#ffeaa7" opacity="0.8"/>
+</svg>
